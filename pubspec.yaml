@@ -1,0 +1,24 @@
+name: http_toolkit
+description: Collection of missing features for the Dart HTTP package.
+version: 0.0.1
+repository: https://github.com/maranix/http_toolkit
+
+topics:
+  - network
+  - http
+  - middleware
+  - middlewares
+  - interceptors
+  - http extensions
+
+environment:
+  sdk: ^3.6.1
+
+dependencies:
+  http: ^1.2.2
+  # path: ^1.8.0
+
+dev_dependencies:
+  dart_flutter_team_lints: ^3.2.1
+  lints: ^5.0.0
+  test: ^1.24.0
