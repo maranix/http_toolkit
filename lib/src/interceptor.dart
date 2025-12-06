@@ -15,15 +15,15 @@ abstract class Interceptor {
 
 /// A helper class to create an [Interceptor] from functions.
 class FunctionalInterceptor implements Interceptor {
-  final FutureOr<BaseRequest> Function(BaseRequest)? onRequestCallback;
-  final FutureOr<BaseResponse> Function(BaseResponse)? onResponseCallback;
-  final FutureOr<BaseResponse> Function(Object, StackTrace)? onErrorCallback;
-
   const FunctionalInterceptor({
     this.onRequestCallback,
     this.onResponseCallback,
     this.onErrorCallback,
   });
+
+  final FutureOr<BaseRequest> Function(BaseRequest)? onRequestCallback;
+  final FutureOr<BaseResponse> Function(BaseResponse)? onResponseCallback;
+  final FutureOr<BaseResponse> Function(Object, StackTrace)? onErrorCallback;
 
   @override
   FutureOr<BaseRequest> onRequest(BaseRequest request) {
@@ -38,6 +38,7 @@ class FunctionalInterceptor implements Interceptor {
     if (onResponseCallback != null) {
       return onResponseCallback!(response);
     }
+
     return response;
   }
 
@@ -46,6 +47,13 @@ class FunctionalInterceptor implements Interceptor {
     if (onErrorCallback != null) {
       return onErrorCallback!(error, stackTrace);
     }
-    throw error;
+
+    if (error is Exception) {
+      throw error;
+    }
+
+    throw Exception(
+      'Expected `error` to be a subtype of `Exception` but got ${error.runtimeType}',
+    );
   }
 }

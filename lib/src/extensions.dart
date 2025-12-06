@@ -14,7 +14,7 @@ extension ResponseExtensions on Response {
     if (decoded is Map<String, dynamic>) {
       return decoded;
     }
-    throw FormatException('Response body is not a JSON Map.');
+    throw const FormatException('Response body is not a JSON Map.');
   }
 
   /// Decodes the body of the response as a List.
@@ -24,7 +24,7 @@ extension ResponseExtensions on Response {
     if (decoded is List) {
       return decoded;
     }
-    throw FormatException('Response body is not a JSON List.');
+    throw const FormatException('Response body is not a JSON List.');
   }
 
   /// Returns `true` if the status code is between 200 and 299.
@@ -49,11 +49,13 @@ extension ClientExtensions on Client {
     Map<String, String>? headers,
     Map<String, dynamic>? queryParameters,
   }) {
+    var updatedUrl = url;
     if (queryParameters != null && queryParameters.isNotEmpty) {
-      url = url.replace(
+      updatedUrl = url.replace(
         queryParameters: {...url.queryParameters, ...queryParameters},
       );
     }
-    return this.get(url, headers: headers);
+
+    return this.get(updatedUrl, headers: headers);
   }
 }

@@ -1,17 +1,20 @@
+// ignore_for_file: avoid_print
+
 import 'package:http_toolkit/http_toolkit.dart';
 
 void main() async {
   // 1. Create the client with middlewares and interceptors
   final client = Client(
     middlewares: [
-      LoggerMiddleware(logHeaders: true, logBody: true),
-      BearerAuthMiddleware('super-secret-token'),
-      RetryMiddleware(maxRetries: 2), // Retry up to 2 times on failure
-      HeadersMiddleware(headers: {'User-Agent': 'HttpToolkit/1.0'}),
+      const LoggerMiddleware(logBody: true).call,
+      const BearerAuthMiddleware('super-secret-token').call,
+      const RetryMiddleware(
+        maxRetries: 2,
+      ).call, // Retry up to 2 times on failure
+      const HeadersMiddleware(headers: {'User-Agent': 'HttpToolkit/1.0'}).call,
     ],
   );
 
-  print('--- Fetching Todos (Success Case) ---');
   try {
     final response = await client.get(
       Uri.parse('https://jsonplaceholder.typicode.com/todos/1'),
@@ -21,11 +24,10 @@ void main() async {
       print('Status: ${response.statusCode}');
       print('Data: ${response.jsonMap}');
     }
-  } catch (e) {
+  } on Exception catch (e) {
     print('Error: $e');
   }
 
-  print('\n--- Fetching Invalid URL (Error/Retry Case) ---');
   try {
     // This should trigger retries if the host is reachable but returns 5xx,
     // or if connection fails (e.g. invalid host usually throws immediately, let's see)
@@ -35,7 +37,7 @@ void main() async {
       Uri.parse('https://jsonplaceholder.typicode.com/invalid-endpoint'),
     );
     print('Status: ${response.statusCode}');
-  } catch (e) {
+  } on Exception catch (e) {
     print('Error caught: $e');
   }
 

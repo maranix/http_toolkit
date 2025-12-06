@@ -17,14 +17,17 @@ typedef Middleware =
 class Pipeline {
   final List<Middleware> _middlewares = [];
 
-  Pipeline add(Middleware middleware) {
+  void add(Middleware middleware) {
     _middlewares.add(middleware);
-    return this;
+  }
+
+  void addAll(Iterable<Middleware> middlewares) {
+    _middlewares.addAll(middlewares);
   }
 
   Handler addHandler(Handler handler) {
     return (request) {
-      Handler next = handler;
+      var next = handler;
       for (var i = _middlewares.length - 1; i >= 0; i--) {
         final middleware = _middlewares[i];
         final currentNext = next;

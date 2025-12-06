@@ -5,11 +5,6 @@ import '../middleware.dart';
 
 /// A middleware that retries requests on failure.
 class RetryMiddleware {
-  final int maxRetries;
-  final Duration Function(int retryCount)? delay;
-  final bool Function(Object error)? whenError;
-  final bool Function(BaseResponse response)? whenResponse;
-
   const RetryMiddleware({
     this.maxRetries = 3,
     this.delay,
@@ -17,8 +12,13 @@ class RetryMiddleware {
     this.whenResponse,
   });
 
+  final int maxRetries;
+  final Duration Function(int retryCount)? delay;
+  final bool Function(Object error)? whenError;
+  final bool Function(BaseResponse response)? whenResponse;
+
   Future<StreamedResponse> call(BaseRequest request, Handler next) async {
-    int attempts = 0;
+    var attempts = 0;
     while (true) {
       attempts++;
       // For the first attempt, use the original request.
@@ -79,10 +79,11 @@ class RetryMiddleware {
       );
     }
 
-    requestCopy.headers.addAll(request.headers);
-    requestCopy.followRedirects = request.followRedirects;
-    requestCopy.maxRedirects = request.maxRedirects;
-    requestCopy.persistentConnection = request.persistentConnection;
+    requestCopy
+      ..headers.addAll(request.headers)
+      ..followRedirects = request.followRedirects
+      ..maxRedirects = request.maxRedirects
+      ..persistentConnection = request.persistentConnection;
 
     return requestCopy;
   }

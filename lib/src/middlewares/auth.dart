@@ -4,9 +4,8 @@ import '../middleware.dart';
 
 /// Middleware that injects a Bearer token into the Authorization header.
 class BearerAuthMiddleware {
-  final String token;
-
   const BearerAuthMiddleware(this.token);
+  final String token;
 
   Future<StreamedResponse> call(BaseRequest request, Handler next) {
     request.headers['Authorization'] = 'Bearer $token';
@@ -16,10 +15,9 @@ class BearerAuthMiddleware {
 
 /// Middleware that injects Basic Auth credentials into the Authorization header.
 class BasicAuthMiddleware {
+  const BasicAuthMiddleware({required this.username, required this.password});
   final String username;
   final String password;
-
-  const BasicAuthMiddleware({required this.username, required this.password});
 
   Future<StreamedResponse> call(BaseRequest request, Handler next) {
     final credentials = '$username:$password';

@@ -1,8 +1,9 @@
+/// @docImport 'package:http_toolkit/http_toolkit.dart';
 /// A powerful, composable HTTP client wrapper for Dart.
 ///
 /// `http_toolkit` provides a robust "missing battery" layer for the standard `http` package,
 /// enabling advanced features like **Interceptors**, **Middleware Pipelines**, and **Extensions**
-/// while maintaining 100% compatibility with `http.BaseClient`.
+/// while maintaining maximum compatibility with `http.BaseClient`.
 ///
 /// ## Key Features
 ///

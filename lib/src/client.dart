@@ -5,11 +5,6 @@ import 'middleware.dart';
 
 /// A powerful HTTP client wrapper that supports interceptors and middleware.
 class Client extends http.BaseClient {
-  final http.Client _inner;
-  final List<Interceptor> _interceptors;
-  final List<Middleware> _middlewares;
-  late final Handler _pipeline;
-
   Client({
     http.Client? inner,
     List<Interceptor>? interceptors,
@@ -18,15 +13,19 @@ class Client extends http.BaseClient {
        _interceptors = interceptors ?? [],
        _middlewares = middlewares ?? [] {
     final pipeline = Pipeline();
-    for (final middleware in _middlewares) {
-      pipeline.add(middleware);
-    }
+
+    _middlewares.forEach(pipeline.add);
     _pipeline = pipeline.addHandler(_inner.send);
   }
 
+  final http.Client _inner;
+  final List<Interceptor> _interceptors;
+  final List<Middleware> _middlewares;
+  late final Handler _pipeline;
+
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    http.BaseRequest currentRequest = request;
+    var currentRequest = request;
 
     // 1. Run Request Interceptors
     for (final interceptor in _interceptors) {
@@ -62,7 +61,7 @@ class Client extends http.BaseClient {
 
         return currentResponse as http.StreamedResponse;
       }
-    } catch (e, stackTrace) {
+    } on Exception catch (e, stackTrace) {
       // 4. Run Error Interceptors
       try {
         // We need a way for onError to potentially resolve a Response or rethrow.
@@ -75,7 +74,9 @@ class Client extends http.BaseClient {
             return await interceptor.onError(e, stackTrace)
                 as http.StreamedResponse;
           } catch (newError) {
-            if (interceptor == _interceptors.last) rethrow;
+            if (interceptor == _interceptors.last) {
+              rethrow;
+            }
             continue;
           }
         }

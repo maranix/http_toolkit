@@ -1,13 +1,13 @@
-import 'package:test/test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:http_toolkit/http_toolkit.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('RetryMiddleware', () {
     test('retries on exception up to maxRetries', () async {
-      int attempts = 0;
-      final mockInner = MockClient((request) async {
+      var attempts = 0;
+      final mockInner = MockClient((request) {
         attempts++;
         throw http.ClientException('Network Error');
       });
@@ -18,13 +18,13 @@ void main() {
           RetryMiddleware(
             maxRetries: 2,
             delay: (_) => Duration.zero, // No delay for tests
-          ),
+          ).call,
         ],
       );
 
       try {
         await client.get(Uri.parse('https://example.com'));
-      } catch (e) {
+      } on Exception catch (e) {
         expect(e, isA<http.ClientException>());
       }
 
@@ -32,17 +32,20 @@ void main() {
     });
 
     test('stops retrying on success', () async {
-      int attempts = 0;
+      var attempts = 0;
       final mockInner = MockClient((request) async {
         attempts++;
-        if (attempts < 2) throw http.ClientException('Error');
+        if (attempts < 2) {
+          throw http.ClientException('Error');
+        }
+
         return http.Response('ok', 200);
       });
 
       final client = Client(
         inner: mockInner,
         middlewares: [
-          RetryMiddleware(maxRetries: 3, delay: (_) => Duration.zero),
+          RetryMiddleware(delay: (_) => Duration.zero).call,
         ],
       );
 
@@ -61,7 +64,7 @@ void main() {
 
       final client = Client(
         inner: mockInner,
-        middlewares: [BearerAuthMiddleware('mytoken')],
+        middlewares: [const BearerAuthMiddleware('mytoken').call],
       );
 
       await client.get(Uri.parse('https://example.com'));
@@ -76,7 +79,9 @@ void main() {
 
       final client = Client(
         inner: mockInner,
-        middlewares: [BasicAuthMiddleware(username: 'user', password: 'pass')],
+        middlewares: [
+          const BasicAuthMiddleware(username: 'user', password: 'pass').call,
+        ],
       );
 
       await client.get(Uri.parse('https://example.com'));

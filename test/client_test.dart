@@ -1,7 +1,7 @@
-import 'package:test/test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:http_toolkit/http_toolkit.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('Client', () {
@@ -52,9 +52,9 @@ void main() {
       Future<http.StreamedResponse> middleware(
         http.BaseRequest request,
         Handler next,
-      ) async {
+      ) {
         middlewareCalled = true;
-        return await next(request);
+        return next(request);
       }
 
       final client = Client(inner: mockInner, middlewares: [middleware]);
@@ -72,9 +72,9 @@ void main() {
       Future<http.StreamedResponse> middleware(
         http.BaseRequest request,
         Handler next,
-      ) async {
+      ) {
         request.headers['X-Custom'] = 'FoundIt';
-        return await next(request);
+        return next(request);
       }
 
       final client = Client(inner: mockInner, middlewares: [middleware]);

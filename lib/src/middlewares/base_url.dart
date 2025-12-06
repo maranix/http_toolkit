@@ -22,9 +22,8 @@ import '../middleware.dart';
 /// Better approach for this package: `BaseUrlMiddleware` might be tricky because request.url is final
 /// and must be valid. We can create a NEW request with the new URL.
 class BaseUrlMiddleware {
-  final Uri baseUrl;
-
   const BaseUrlMiddleware(this.baseUrl);
+  final Uri baseUrl;
 
   Future<StreamedResponse> call(BaseRequest request, Handler next) {
     // If request.url is already absolute and matches desired structure, do nothing?
