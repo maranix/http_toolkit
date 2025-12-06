@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:http/http.dart';
-import 'package:meta/meta.dart';
 import '../middleware.dart';
 import '../utils/request_copier.dart';
 
@@ -22,8 +21,7 @@ class FixedDelayStrategy implements BackoffStrategy {
 }
 
 /// A strategy that waits for a duration that increases linearly with the attempt count.
-@reopen
-class LinearBackoffStrategy extends BackoffStrategy {
+class LinearBackoffStrategy implements BackoffStrategy {
   const LinearBackoffStrategy(this.initialDelay);
   final Duration initialDelay;
 
@@ -32,8 +30,7 @@ class LinearBackoffStrategy extends BackoffStrategy {
 }
 
 /// A strategy that waits for a duration that increases exponentially with the attempt count.
-@reopen
-class ExponentialBackoffStrategy extends BackoffStrategy {
+class ExponentialBackoffStrategy implements BackoffStrategy {
   const ExponentialBackoffStrategy({
     this.initialDelay = const Duration(milliseconds: 500),
   });
