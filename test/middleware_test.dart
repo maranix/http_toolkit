@@ -87,4 +87,185 @@ void main() {
       await client.get(Uri.parse('https://example.com'));
     });
   });
+
+  group('BaseUrlMiddleware', () {
+    test('retargets relative path to base url', () async {
+      final mockInner = MockClient((request) async {
+        expect(request.url.toString(), 'https://api.example.com/v1/users');
+        return http.Response('ok', 200);
+      });
+
+      final client = Client(
+        inner: mockInner,
+        middlewares: [
+          BaseUrlMiddleware(Uri.parse('https://api.example.com/v1/')),
+        ],
+      );
+
+      await client.get(Uri.parse('users'));
+    });
+
+    test('preserves query parameters', () async {
+      final mockInner = MockClient((request) async {
+        expect(
+          request.url.toString(),
+          'https://api.example.com/v1/users?page=1',
+        );
+        return http.Response('ok', 200);
+      });
+
+      final client = Client(
+        inner: mockInner,
+        middlewares: [
+          BaseUrlMiddleware(Uri.parse('https://api.example.com/v1/')),
+        ],
+      );
+
+      await client.get(Uri.parse('users?page=1'));
+    });
+
+    test('preserves fragment', () async {
+      final mockInner = MockClient((request) async {
+        expect(
+          request.url.toString(),
+          'https://api.example.com/v1/users#top',
+        );
+        return http.Response('ok', 200);
+      });
+
+      final client = Client(
+        inner: mockInner,
+        middlewares: [
+          BaseUrlMiddleware(Uri.parse('https://api.example.com/v1/')),
+        ],
+      );
+
+      await client.get(Uri.parse('users#top'));
+    });
+  });
+
+  group('HeadersMiddleware', () {
+    test('injects headers', () async {
+      final mockInner = MockClient((request) async {
+        expect(request.headers['X-Custom'], 'value');
+        return http.Response('ok', 200);
+      });
+
+      final client = Client(
+        inner: mockInner,
+        middlewares: [
+          const HeadersMiddleware(headers: {'X-Custom': 'value'}),
+        ],
+      );
+
+      await client.get(Uri.parse('https://example.com'));
+    });
+
+    test('overwrites existing headers if duplicated', () async {
+      final mockInner = MockClient((request) async {
+        expect(request.headers['X-Key'], 'new');
+        return http.Response('ok', 200);
+      });
+
+      final client = Client(
+        inner: mockInner,
+        middlewares: [
+          const HeadersMiddleware(headers: {'X-Key': 'new'}),
+        ],
+      );
+
+      await client.get(
+        Uri.parse('https://example.com'),
+        headers: {'X-Key': 'old'},
+      );
+    });
+  });
+
+  group('LoggerMiddleware', () {
+    test('logs request and response', () async {
+      final logOutput = <String>[];
+      final logger = FunctionalLogger(
+        logCallback: logOutput.add,
+        logHeaders: true,
+      );
+
+      final mockInner = MockClient((request) async {
+        return http.Response('ok', 200, request: request);
+      });
+
+      final client = Client(
+        inner: mockInner,
+        middlewares: [LoggerMiddleware(logger: logger)],
+      );
+
+      await client.get(Uri.parse('https://example.com'));
+
+      expect(
+        logOutput,
+        contains(
+          'Request --> GET https://example.com',
+        ),
+      );
+      expect(
+        logOutput,
+        contains(
+          'Response <-- 200 https://example.com',
+        ),
+      );
+    });
+
+    test('logs body when enabled', () async {
+      final logOutput = <String>[];
+      final logger = FunctionalLogger(
+        logCallback: logOutput.add,
+        logBody: true,
+      );
+
+      final mockInner = MockClient((request) async {
+        return http.Response('{"key": "value"}', 200);
+      });
+
+      final client = Client(
+        inner: mockInner,
+        middlewares: [LoggerMiddleware(logger: logger, logBody: true)],
+      );
+
+      final response = await client.post(
+        Uri.parse('https://example.com'),
+        body: 'request-body',
+      );
+
+      expect(
+        response.body,
+        '{"key": "value"}',
+      ); // Verify stream is still readable
+      expect(logOutput, contains('Body: request-body'));
+      expect(logOutput, contains('Body: {"key": "value"}'));
+    });
+
+    test('logs error on exception', () async {
+      final logOutput = <String>[];
+      final logger = FunctionalLogger(
+        logCallback: logOutput.add,
+      );
+
+      final mockInner = MockClient((request) {
+        throw http.ClientException('Fail');
+      });
+
+      final client = Client(
+        inner: mockInner,
+        middlewares: [LoggerMiddleware(logger: logger)],
+      );
+
+      try {
+        await client.get(Uri.parse('https://example.com'));
+      } on Exception catch (_) {}
+
+      expect(
+        logOutput.any((line) => line.startsWith('Error <--')),
+        isTrue,
+      );
+    });
+  });
 }

@@ -31,7 +31,7 @@ extension ResponseExtensions on Response {
   bool get isSuccess => statusCode >= 200 && statusCode < 300;
 
   /// Returns `true` if the status code is between 300 and 399.
-  bool get isRedirect => statusCode >= 300 && statusCode < 400;
+  bool get isRedirectCode => statusCode >= 300 && statusCode < 400;
 
   /// Returns `true` if the status code is between 400 and 499.
   bool get isClientError => statusCode >= 400 && statusCode < 500;
@@ -44,7 +44,7 @@ extension ClientExtensions on Client {
   /// Sends an HTTP GET request with the given headers and [queryParameters].
   ///
   /// If [queryParameters] is provided, it is added to the [url].
-  Future<Response> get(
+  Future<Response> getWith(
     Uri url, {
     Map<String, String>? headers,
     Map<String, dynamic>? queryParameters,
