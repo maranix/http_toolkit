@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0+1
+
+- Minor fixes and updates to docs.
+
 ## 1.0.0
 
 - Initial release.
