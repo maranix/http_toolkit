@@ -1,6 +1,6 @@
 name: http_toolkit
 description: Collection of missing features for the Dart HTTP package.
-version: 1.0.0
+version: 1.0.0+1
 homepage: https://github.com/maranix/http_toolkit
 repository: https://github.com/maranix/http_toolkit
 issues: https://github.com/maranix/http_toolkit/issues
