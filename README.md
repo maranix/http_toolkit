@@ -144,3 +144,8 @@ if (response.isServerError) { ... } // 500-599
 ## Contributing
 
 Contributions are welcome! Please feel free to verify functionality and submit pull requests.
+
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/maranix/http_toolkit/blob/main/LICENSE) file for details.
