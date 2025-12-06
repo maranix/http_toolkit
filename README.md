@@ -66,52 +66,64 @@ final client = Client(
     // 3. Retry if network fails or 503
     RetryMiddleware(
       maxRetries: 2,
-      whenResponse: (response) => response.statusCode == 503,
-    ),
-  ],
-);
+### Middleware
+
+Middleware allows you to intercept and modify requests and responses. You can create custom middleware by implementing the `Middleware` interface.
+
+```dart
+import 'package:http_toolkit/http_toolkit.dart';
+
+class MyMiddleware implements Middleware {
+  @override
+  Future<StreamedResponse> handle(BaseRequest request, Handler next) async {
+    print('Request: ${request.url}');
+    final response = await next(request);
+    print('Response: ${response.statusCode}');
+    return response;
+  }
+}
 ```
+
+### Built-in Middleware
+
+`http_toolkit` comes with several built-in middlewares:
+
+- **`RetryMiddleware`**: Retries failed requests with configurable backoff strategies.
+  ```dart
+  RetryMiddleware(
+    maxRetries: 3,
+    strategy: ExponentialBackoffStrategy(initialDelay: Duration(seconds: 1)),
+  )
+  ```
+- **`LoggerMiddleware`**: Logs requests and responses to the console.
+  ```dart
+  LoggerMiddleware(logHeaders: true, logBody: true)
+  ```
+- **`BearerAuthMiddleware`**: Injects `Authorization: Bearer <token>` header.
+- **`BasicAuthMiddleware`**: Injects `Authorization: Basic <credentials>` header.
+- **`HeadersMiddleware`**: Adds default headers to every request.
+- **`BaseUrlMiddleware`**: Prepends a base URL to request paths.
 
 ### Interceptors
 
-Interceptors allow low-level access to the `Request` and `Response` objects before/after the middleware pipeline.
-
-```dart
-class MyInterceptor implements Interceptor {
-  @override
-  FutureOr<BaseRequest> onRequest(BaseRequest request) {
-    print('Intercepted: ${request.url}');
-    return request;
-  }
-
-  @override
-  FutureOr<BaseResponse> onResponse(BaseResponse response) {
-    return response;
-  }
-
-  @override
-  FutureOr<BaseResponse> onError(Object error, StackTrace stackTrace) {
-    throw error;
-  }
-}
-
-final client = Client(interceptors: [MyInterceptor()]);
-```
-
-or use `FunctionalInterceptor` for quick tasks:
+Interceptors provide a lower-level hook for observing or modifying traffic without the full power of the middleware pipeline.
 
 ```dart
 final client = Client(
   interceptors: [
     FunctionalInterceptor(
-      onRequestCallback: (req) {
-        req.headers['X-Custom-Header'] = '123';
-        return req;
+      onRequestCallback: (request) {
+        // Modify request
+        return request;
       },
     ),
   ],
 );
 ```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ### Extensions
 

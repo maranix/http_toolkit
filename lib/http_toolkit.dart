@@ -27,9 +27,9 @@
 /// void main() async {
 ///   final client = Client(
 ///     middlewares: [
-///       LoggerMiddleware(),
-///       BearerAuthMiddleware('my-token'),
-///       RetryMiddleware(maxRetries: 2),
+///       const LoggerMiddleware(logBody: true),
+///       const RetryMiddleware(maxRetries: 3),
+///       const BearerAuthMiddleware('my-token'),
 ///     ],
 ///   );
 ///

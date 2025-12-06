@@ -15,10 +15,10 @@ void main() {
       final client = Client(
         inner: mockInner,
         middlewares: [
-          RetryMiddleware(
+          const RetryMiddleware(
             maxRetries: 2,
-            delay: (_) => Duration.zero, // No delay for tests
-          ).call,
+            strategy: FixedDelayStrategy(Duration.zero),
+          ),
         ],
       );
 
@@ -45,7 +45,7 @@ void main() {
       final client = Client(
         inner: mockInner,
         middlewares: [
-          RetryMiddleware(delay: (_) => Duration.zero).call,
+          const RetryMiddleware(strategy: FixedDelayStrategy(Duration.zero)),
         ],
       );
 
@@ -64,7 +64,7 @@ void main() {
 
       final client = Client(
         inner: mockInner,
-        middlewares: [const BearerAuthMiddleware('mytoken').call],
+        middlewares: [const BearerAuthMiddleware('mytoken')],
       );
 
       await client.get(Uri.parse('https://example.com'));
@@ -80,7 +80,7 @@ void main() {
       final client = Client(
         inner: mockInner,
         middlewares: [
-          const BasicAuthMiddleware(username: 'user', password: 'pass').call,
+          const BasicAuthMiddleware(username: 'user', password: 'pass'),
         ],
       );
 

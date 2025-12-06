@@ -6,23 +6,26 @@ void main() async {
   // 1. Create the client with middlewares and interceptors
   final client = Client(
     middlewares: [
-      const LoggerMiddleware(logBody: true).call,
-      const BearerAuthMiddleware('super-secret-token').call,
+      BaseUrlMiddleware(
+        Uri.parse('https://jsonplaceholder.typicode.com'),
+      ),
+      const LoggerMiddleware(logBody: true),
+      const BearerAuthMiddleware('super-secret-token'),
       const RetryMiddleware(
         maxRetries: 2,
-      ).call, // Retry up to 2 times on failure
-      const HeadersMiddleware(headers: {'User-Agent': 'HttpToolkit/1.0'}).call,
+        strategy: FixedDelayStrategy(Duration(milliseconds: 200)),
+      ),
+      const HeadersMiddleware(headers: {'User-Agent': 'HttpToolkit/1.0'}),
     ],
   );
 
   try {
     final response = await client.get(
-      Uri.parse('https://jsonplaceholder.typicode.com/todos/1'),
+      Uri.parse('/todos/1'),
     );
 
     if (response.isSuccess) {
-      print('Status: ${response.statusCode}');
-      print('Data: ${response.jsonMap}');
+      print('Done');
     }
   } on Exception catch (e) {
     print('Error: $e');
@@ -34,7 +37,7 @@ void main() async {
     // jsonplaceholder doesn't have 5xx easily triggered, so this might just fail or 404.
     // 404 does NOT trigger retry in our default logic (only exceptions unless configured).
     final response = await client.get(
-      Uri.parse('https://jsonplaceholder.typicode.com/invalid-endpoint'),
+      Uri.parse('/invalid-endpoint'),
     );
     print('Status: ${response.statusCode}');
   } on Exception catch (e) {

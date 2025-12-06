@@ -3,6 +3,18 @@ import 'package:http/testing.dart';
 import 'package:http_toolkit/http_toolkit.dart';
 import 'package:test/test.dart';
 
+// Helper for testing inline middlewares
+class FunctionalMiddleware implements Middleware {
+  const FunctionalMiddleware(this.handler);
+  final Future<http.StreamedResponse> Function(http.BaseRequest, Handler)
+  handler;
+
+  @override
+  Future<http.StreamedResponse> handle(http.BaseRequest request, Handler next) {
+    return handler(request, next);
+  }
+}
+
 void main() {
   group('Client', () {
     test('executes request interceptors', () async {
@@ -49,13 +61,10 @@ void main() {
       });
 
       var middlewareCalled = false;
-      Future<http.StreamedResponse> middleware(
-        http.BaseRequest request,
-        Handler next,
-      ) {
+      final middleware = FunctionalMiddleware((request, next) {
         middlewareCalled = true;
         return next(request);
-      }
+      });
 
       final client = Client(inner: mockInner, middlewares: [middleware]);
       await client.get(Uri.parse('https://example.com'));
@@ -69,13 +78,10 @@ void main() {
         return http.Response('ok', 200);
       });
 
-      Future<http.StreamedResponse> middleware(
-        http.BaseRequest request,
-        Handler next,
-      ) {
+      final middleware = FunctionalMiddleware((request, next) {
         request.headers['X-Custom'] = 'FoundIt';
         return next(request);
-      }
+      });
 
       final client = Client(inner: mockInner, middlewares: [middleware]);
       await client.get(Uri.parse('https://example.com'));

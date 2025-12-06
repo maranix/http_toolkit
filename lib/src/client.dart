@@ -12,9 +12,7 @@ class Client extends http.BaseClient {
   }) : _inner = inner ?? http.Client(),
        _interceptors = interceptors ?? [],
        _middlewares = middlewares ?? [] {
-    final pipeline = Pipeline();
-
-    _middlewares.forEach(pipeline.add);
+    final pipeline = Pipeline()..addAll(_middlewares);
     _pipeline = pipeline.addHandler(_inner.send);
   }
 
@@ -62,13 +60,9 @@ class Client extends http.BaseClient {
         return currentResponse as http.StreamedResponse;
       }
     } on Exception catch (e, stackTrace) {
-      // 4. Run Error Interceptors
       try {
-        // We need a way for onError to potentially resolve a Response or rethrow.
-        // But `onError` returns `FutureOr<BaseResponse>`.
         // If it returns a response, we consider the error recovered.
         // If it throws, we bubble up.
-
         for (final interceptor in _interceptors) {
           try {
             return await interceptor.onError(e, stackTrace)
