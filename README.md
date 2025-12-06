@@ -1,39 +1,134 @@
-<!-- 
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# HTTP Toolkit
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages). 
+A fully featured, composable HTTP client wrapper for Dart, adding missing "batteries" to the standard `http` package.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages). 
--->
-
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+`http_toolkit` provides a powerful `Client` that supports **Interceptors**, **Middleware Pipelines**, and convenient **Extensions**, while remaining 100% compatible with the standard `http.BaseClient` interface.
 
 ## Features
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+- **🚀 Interceptors**: Modify requests, responses, and handle errors globally.
+- **⛓️ Middleware Pipeline**: Compose behavior like authentication, logging, and retries.
+- **🛠️ Built-in Middlewares**:
+    - `RetryMiddleware`: Exponential backoff and customizable retry logic.
+    - `LoggerMiddleware`: Debug requests and responses easily.
+    - `BearerAuthMiddleware` & `BasicAuthMiddleware`: Simple authentication injection.
+    - `HeadersMiddleware`: Global default headers.
+- **⚡ Extensions**: Helper getters for `Response` (JSON decoding, status checks) and `Client` (query parameters).
+- **🧘 Flexible**: Works with any `http.Client` implementation.
 
-## Getting started
+## Getting Started
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+Add the dependency to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  http_toolkit: ^1.0.0
+```
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder. 
+### Basic Usage
+
+Use `http_toolkit.Client` as a drop-in replacement for `http.Client`.
 
 ```dart
-const like = 'sample';
+import 'package:http_toolkit/http_toolkit.dart';
+
+void main() async {
+  final client = Client(
+    middlewares: [
+      LoggerMiddleware(),
+      RetryMiddleware(maxRetries: 3),
+    ],
+  );
+
+  final response = await client.get(Uri.parse('https://api.example.com/data'));
+  
+  if (response.isSuccess) {
+    print(response.jsonMap); // Typed JSON access
+  }
+}
 ```
 
-## Additional information
+### Middlewares
 
-TODO: Tell users more about the package: where to find more information, how to 
-contribute to the package, how to file issues, what response they can expect 
-from the package authors, and more.
+Middlewares wrap the request execution. They run in the order defined.
+
+```dart
+final client = Client(
+  middlewares: [
+    // 1. Log the request
+    LoggerMiddleware(logHeaders: true),
+    
+    // 2. Add Auth Token
+    BearerAuthMiddleware('my-secret-token'),
+    
+    // 3. Retry if network fails or 503
+    RetryMiddleware(
+      maxRetries: 2,
+      whenResponse: (response) => response.statusCode == 503,
+    ),
+  ],
+);
+```
+
+### Interceptors
+
+Interceptors allow low-level access to the `Request` and `Response` objects before/after the middleware pipeline.
+
+```dart
+class MyInterceptor implements Interceptor {
+  @override
+  FutureOr<BaseRequest> onRequest(BaseRequest request) {
+    print('Intercepted: ${request.url}');
+    return request;
+  }
+
+  @override
+  FutureOr<BaseResponse> onResponse(BaseResponse response) {
+    return response;
+  }
+
+  @override
+  FutureOr<BaseResponse> onError(Object error, StackTrace stackTrace) {
+    throw error;
+  }
+}
+
+final client = Client(interceptors: [MyInterceptor()]);
+```
+
+or use `FunctionalInterceptor` for quick tasks:
+
+```dart
+final client = Client(
+  interceptors: [
+    FunctionalInterceptor(
+      onRequestCallback: (req) {
+        req.headers['X-Custom-Header'] = '123';
+        return req;
+      },
+    ),
+  ],
+);
+```
+
+### Extensions
+
+Convenient extensions are available for `Response` and `Client`.
+
+```dart
+// JSON parsing
+var data = response.json; // dynamic
+var map = response.jsonMap; // Map<String, dynamic>
+var list = response.jsonList; // List<dynamic>
+
+// Status checks
+if (response.isSuccess) { ... } // 200-299
+if (response.isClientError) { ... } // 400-499
+if (response.isServerError) { ... } // 500-599
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to verify functionality and submit pull requests.

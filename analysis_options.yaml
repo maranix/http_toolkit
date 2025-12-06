@@ -11,4 +11,9 @@
 # (the recommended set includes the core lints).
 # The core lints are also what is used by pub.dev for scoring packages.
 
-include: package:dart_flutter_team_lints/analysis_options.yaml
+include: package:pedantic_mono/analysis_options.yaml
+
+
+lints:
+  exclude:
+    lines_longer_than_80_chars: false
