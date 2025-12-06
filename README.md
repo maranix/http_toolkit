@@ -2,7 +2,7 @@
 
 A fully featured, composable HTTP client wrapper for Dart, adding missing "batteries" to the standard `http` package.
 
-`http_toolkit` provides a powerful `Client` that supports **Interceptors**, **Middleware Pipelines**, and convenient **Extensions**, while remaining 100% compatible with the standard `http.BaseClient` interface.
+`http_toolkit` provides a powerful `Client` that supports **Interceptors**, **Middleware Pipelines**, and convenient **Extensions**, while retaining maximum compatibility with the standard `http.BaseClient` interface.
 
 ## Features
 
@@ -22,7 +22,7 @@ Add the dependency to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  http_toolkit: ^1.0.0
+  http_toolkit: ^1.0.0+1
 ```
 
 ## Usage
@@ -32,17 +32,18 @@ dependencies:
 Use `http_toolkit.Client` as a drop-in replacement for `http.Client`.
 
 ```dart
-import 'package:http_toolkit/http_toolkit.dart';
+import 'package:http_toolkit/http_toolkit.dart' as http_toolkit;
 
 void main() async {
-  final client = Client(
+  final client = http_toolkit.Client(
     middlewares: [
+      BaseUrlMiddleware(Uri.parse('https://api.example.com')),
       LoggerMiddleware(),
       RetryMiddleware(maxRetries: 3),
     ],
   );
 
-  final response = await client.get(Uri.parse('https://api.example.com/data'));
+  final response = await client.get(Uri.parse('/data'));
   
   if (response.isSuccess) {
     print(response.jsonMap); // Typed JSON access
@@ -64,11 +65,12 @@ final client = Client(
     BearerAuthMiddleware('my-secret-token'),
     
     // 3. Retry if network fails or 503
-    RetryMiddleware(
-      maxRetries: 2,
-### Middleware
+    RetryMiddleware(maxRetries: 2),
+    ]
+);
+```
 
-Middleware allows you to intercept and modify requests and responses. You can create custom middleware by implementing the `Middleware` interface.
+You can also create custom middleware by implementing the `Middleware` interface.
 
 ```dart
 import 'package:http_toolkit/http_toolkit.dart';
@@ -121,10 +123,6 @@ final client = Client(
 );
 ```
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
 ### Extensions
 
 Convenient extensions are available for `Response` and `Client`.
@@ -143,8 +141,7 @@ if (response.isServerError) { ... } // 500-599
 
 ## Contributing
 
-Contributions are welcome! Please feel free to verify functionality and submit pull requests.
-
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
