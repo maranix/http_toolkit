@@ -14,7 +14,7 @@ A fully featured, composable HTTP client wrapper for Dart, adding missing "batte
     - `BearerAuthMiddleware` & `BasicAuthMiddleware`: Simple authentication injection.
     - `HeadersMiddleware`: Global default headers.
 - **⚡ Extensions**: Helper getters for `Response` (JSON decoding, status checks) and `Client` (query parameters).
-- **🧘 Flexible**: Works with any `http.Client` implementation.
+- **💪 Flexible**: Works with any `http.Client` implementation.
 
 ## Getting Started
 
