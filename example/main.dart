@@ -19,6 +19,29 @@ void main() async {
     ],
   );
 
+  final retryClient = Client(
+    middlewares: [
+      const LoggerMiddleware(logBody: true),
+      const HeadersMiddleware(headers: {'User-Agent': 'HttpToolkit/1.0'}),
+      RetryMiddleware(
+        maxRetries: 2,
+        strategy: const LinearBackoffStrategy(Duration(seconds: 1)),
+        whenError: (err, attempts, nextTry) {
+          print(
+            'Got Error in attempt $attempts, Retrying in ${nextTry.inMilliseconds}ms...',
+          );
+          return true;
+        },
+        whenResponse: (res, attempts, totalDuration) {
+          print(
+            'Got Response in attempt $attempts, Recovered in total ${totalDuration.inMilliseconds}ms...',
+          );
+          return true;
+        },
+      ),
+    ],
+  );
+
   try {
     final response = await client.get(
       Uri.parse('/todos/1'),
@@ -32,12 +55,8 @@ void main() async {
   }
 
   try {
-    // This should trigger retries if the host is reachable but returns 5xx,
-    // or if connection fails (e.g. invalid host usually throws immediately, let's see)
-    // jsonplaceholder doesn't have 5xx easily triggered, so this might just fail or 404.
-    // 404 does NOT trigger retry in our default logic (only exceptions unless configured).
-    final response = await client.get(
-      Uri.parse('/invalid-endpoint'),
+    final response = await retryClient.get(
+      Uri.parse('http://localhost:8080'),
     );
     print('Status: ${response.statusCode}');
   } on Exception catch (e) {
