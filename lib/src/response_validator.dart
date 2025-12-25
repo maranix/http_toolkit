@@ -47,7 +47,7 @@ import 'package:http/http.dart' as http;
 /// or using a validation library after JSON parsing.
 ///
 /// See also:
-/// - [RequestExtension.getDecoded] for typed JSON requests with validation
+/// - `RequestExtension.getDecoded` for typed JSON requests with validation
 abstract final class ResponseValidator {
   /// Ensures the response has the expected HTTP status code.
   ///
