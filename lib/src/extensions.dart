@@ -53,6 +53,7 @@ extension ResponseBodyExtension on http.Response {
   /// Throws [FormatException] when:
   /// - Response body is not valid JSON
   /// - Decoded JSON is not a List (e.g., it's an object or primitive)
+  /// - [T] does not conform to children inside the List
   ///
   /// ## Example
   ///
@@ -64,7 +65,7 @@ extension ResponseBodyExtension on http.Response {
   /// ## Better Alternative
   ///
   /// For type-safe parsing, use [mapJson] with a typed mapper function.
-  List<T> jsonList<T extends Object>() =>
+  List<T> jsonList<T extends dynamic>() =>
       mapJson<List<T>, List<dynamic>>((json) => json.cast<T>());
 
   /// Parses the response body as JSON and applies a mapper function.

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
@@ -31,52 +32,66 @@ void main() {
       final response = Response('[1, 2, 3]', 200);
       final expected = [1, 2, 3];
 
-      final haveNonTyped = response.jsonList();
-      final haveTyped = response.jsonList<int>();
+      expect(response.jsonList(), expected);
+    });
 
-      expect(haveNonTyped, expected);
+    test('jsonList enforces types by explicit casting if given T', () {
+      const listOfInt = [1, 2, 3];
+      const listOfString = ['one', 'two', 'three'];
+      const listOfDouble = [1.1, 2.2, 3.3];
+      const listOfMap = [
+        {'id': 1, 'name': 'user'},
+        {'id': 2, 'name': 'user_two'},
+        {'id': 3, 'name': 'user_three'},
+      ];
 
-      // We should also verify the type as well to ensure that proper types are enforced
-      expect(expected, isA<List<int>>());
+      final integerListResponse = Response(jsonEncode(listOfInt), 200);
+      final stringListResponse = Response(jsonEncode(listOfString), 200);
+      final doubleListResponse = Response(jsonEncode(listOfDouble), 200);
+      final mapListResponse = Response(jsonEncode(listOfMap), 200);
 
-      const integerList = TypeMatcher<List<int>>();
-      const objectlist = TypeMatcher<List<Object>>();
-
+      // Match losely dynamic types, all should pass.
       expect(
-        haveNonTyped,
-        isList,
-      ); // Losely non-typed variant is still a List, passes because types are not compared only the container. `List == List`
-
+        integerListResponse.jsonList(),
+        unorderedEquals(List.from(listOfInt)),
+      );
       expect(
-        haveNonTyped,
-        isNot(integerList),
-      ); // Explicitly matching the wrong type passes here because `List<Object> != List<int>`
-
+        stringListResponse.jsonList(),
+        unorderedEquals(List.from(listOfString)),
+      );
       expect(
-        haveNonTyped,
-        isA<List<Object>>(),
-      ); // Explicitly matching the correct type passes here because `List<Object> == List<Object>`
-
-      // Same principals as above
-      expect(haveTyped, isList);
-
+        doubleListResponse.jsonList(),
+        unorderedEquals(List.from(listOfDouble)),
+      );
       expect(
-        haveTyped,
-        isA<
-          List<Object>
-        >(), // This passes because everything is an Object and so `int` itself is a child of Object class.
+        mapListResponse.jsonList(),
+        unorderedEquals(List.from(listOfMap)),
+      );
+
+      /// Match type of collections
+      const listIntMatcher = TypeMatcher<List<int>>();
+      const listStringMatcher = TypeMatcher<List<String>>();
+      const listDoubleMatcher = TypeMatcher<List<double>>();
+      const listJsonMatcher = TypeMatcher<List<Map<String, dynamic>>>();
+
+      expect(integerListResponse.jsonList<int>(), listIntMatcher);
+      expect(stringListResponse.jsonList<String>(), listStringMatcher);
+      expect(doubleListResponse.jsonList<double>(), listDoubleMatcher);
+      expect(mapListResponse.jsonList<Map<String, dynamic>>(), listJsonMatcher);
+
+      // This passes because we are only comparing the type of children inside the List
+      // not the `Key` and `Value` inside the Map.
+      expect(
+        // ignore: strict_raw_type
+        mapListResponse.jsonList<Map>(),
+        // ignore: strict_raw_type
+        isA<List<Map>>(),
       );
 
       expect(
-        haveTyped,
-        isNot(
-          TypeMatcher<List<String>>(),
-        ), // This passes because while `String == Object` same as `int` but `String != int`.
-      );
-
-      expect(
-        haveTyped,
-        isA<List<int>>(),
+        // ignore: strict_raw_type
+        mapListResponse.jsonList<Map>(),
+        isNot(const TypeMatcher<List<Map<int, String>>>()),
       );
     });
 
