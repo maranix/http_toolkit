@@ -25,16 +25,16 @@ class Client extends http.BaseClient {
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     var currentRequest = request;
 
-    // 1. Run Request Interceptors
+    // Run Request Interceptors
     for (final interceptor in _interceptors) {
       currentRequest = await interceptor.onRequest(currentRequest);
     }
 
     try {
-      // 2. Run Middleware Pipeline (which calls inner.send at the end)
+      // Execute Middleware Pipeline
       final response = await _pipeline(currentRequest);
 
-      // 3. Run Response Interceptors
+      // Run Response Interceptors
       http.BaseResponse currentResponse = response;
       for (final interceptor in _interceptors) {
         currentResponse = await interceptor.onResponse(currentResponse);
@@ -57,7 +57,10 @@ class Client extends http.BaseClient {
           );
         }
 
-        return currentResponse as http.StreamedResponse;
+        throw StateError(
+          'Client.send must return a StreamedResponse. '
+          'Got ${currentResponse.runtimeType}',
+        );
       }
     } on Exception catch (e, stackTrace) {
       try {

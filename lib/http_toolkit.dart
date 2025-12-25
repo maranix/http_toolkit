@@ -51,3 +51,4 @@ export 'src/middlewares/base_url.dart';
 export 'src/middlewares/headers.dart';
 export 'src/middlewares/logger.dart';
 export 'src/middlewares/retry.dart';
+export 'src/response_validator.dart';

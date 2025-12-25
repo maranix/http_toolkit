@@ -30,6 +30,7 @@ class FunctionalInterceptor implements Interceptor {
     if (onRequestCallback != null) {
       return onRequestCallback!(request);
     }
+
     return request;
   }
 

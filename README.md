@@ -13,7 +13,8 @@ A fully featured, composable HTTP client wrapper for Dart, adding missing "batte
     - `LoggerMiddleware`: Debug requests and responses easily.
     - `BearerAuthMiddleware` & `BasicAuthMiddleware`: Simple authentication injection.
     - `HeadersMiddleware`: Global default headers.
-- **⚡ Extensions**: Helper getters for `Response` (JSON decoding, status checks) and `Client` (query parameters).
+- **⚡ Extensions**: Helper getters for `Response` (JSON decoding, status checks) and `Client` (typed JSON requests).
+- **✅ ResponseValidator**: Reusable response validators for common HTTP patterns.
 - **💪 Flexible**: Works with any `http.Client` implementation.
 
 ## Getting Started
@@ -46,7 +47,7 @@ void main() async {
   final response = await client.get(Uri.parse('/data'));
   
   if (response.isSuccess) {
-    print(response.jsonMap); // Typed JSON access
+    print(response.jsonMap()); // Typed JSON access
   }
 }
 ```
@@ -95,6 +96,15 @@ class MyMiddleware implements Middleware {
   RetryMiddleware(
     maxRetries: 3,
     strategy: ExponentialBackoffStrategy(initialDelay: Duration(seconds: 1)),
+    // Observe retry attempts with new callback parameters
+    whenError: (error, attempt, nextDelay) {
+      print('Attempt $attempt failed, retrying in ${nextDelay.inSeconds}s');
+      return true; // Return true to retry
+    },
+    whenResponse: (response, attempt, elapsed) {
+      print('Got response on attempt $attempt after ${elapsed.inMilliseconds}ms');
+      return response.statusCode >= 500; // Retry on server errors
+    },
   )
   ```
 - **`LoggerMiddleware`**: Logs requests and responses to the console.
@@ -105,6 +115,78 @@ class MyMiddleware implements Middleware {
 - **`BasicAuthMiddleware`**: Injects `Authorization: Basic <credentials>` header.
 - **`HeadersMiddleware`**: Adds default headers to every request.
 - **`BaseUrlMiddleware`**: Prepends a base URL to request paths.
+
+### Typed JSON Requests
+
+Use `*Decoded` methods for type-safe JSON parsing with optional response validation:
+
+```dart
+// Define your model
+class User {
+  final int id;
+  final String name;
+  
+  User({required this.id, required this.name});
+  
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(id: json['id'] as int, name: json['name'] as String);
+  }
+}
+
+// Fetch and parse in one step
+final user = await client.getDecoded<User, Map<String, dynamic>>(
+  Uri.parse('https://api.example.com/user/1'),
+  mapper: User.fromJson,
+  responseValidator: ResponseValidator.success,
+);
+```
+
+Available methods:
+- `getDecoded` - GET with JSON decoding
+- `postDecoded` - POST with JSON decoding
+- `putDecoded` - PUT with JSON decoding
+- `patchDecoded` - PATCH with JSON decoding
+- `deleteDecoded` - DELETE with JSON decoding
+
+### Response Validators
+
+Use `ResponseValidator` to validate responses before parsing:
+
+```dart
+// Validate successful response (200-299)
+await client.getDecoded(
+  uri,
+  mapper: User.fromJson,
+  responseValidator: ResponseValidator.success,
+);
+
+// Validate created (201)
+await client.postDecoded(
+  uri,
+  body: jsonEncode(data),
+  mapper: User.fromJson,
+  responseValidator: ResponseValidator.created,
+);
+
+// Combine validators
+await client.getDecoded(
+  uri,
+  mapper: User.fromJson,
+  responseValidator: (response) {
+    ResponseValidator.success(response);
+    ResponseValidator.jsonContentType(response);
+    ResponseValidator.notEmpty(response);
+  },
+);
+```
+
+Available validators:
+- `ResponseValidator.success` - Status 200-299
+- `ResponseValidator.created` - Status 201
+- `ResponseValidator.successOrNoContent` - Status 200 or 204
+- `ResponseValidator.statusCode(response, code)` - Specific status code
+- `ResponseValidator.jsonContentType` - Content-Type is `application/json`
+- `ResponseValidator.notEmpty` - Body is not empty
 
 ### Interceptors
 
@@ -129,9 +211,8 @@ Convenient extensions are available for `Response` and `Client`.
 
 ```dart
 // JSON parsing
-var data = response.json; // dynamic
-var map = response.jsonMap; // Map<String, dynamic>
-var list = response.jsonList; // List<dynamic>
+var map = response.jsonMap(); // Map<String, dynamic>
+var list = response.jsonList(); // List<dynamic>
 
 // Status checks
 if (response.isSuccess) { ... } // 200-299
