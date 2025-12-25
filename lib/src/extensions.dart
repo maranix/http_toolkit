@@ -64,8 +64,8 @@ extension ResponseBodyExtension on http.Response {
   /// ## Better Alternative
   ///
   /// For type-safe parsing, use [mapJson] with a typed mapper function.
-  List<dynamic> jsonList() =>
-      mapJson<List<dynamic>, List<dynamic>>((json) => json);
+  List<T> jsonList<T extends Object>() =>
+      mapJson<List<T>, List<dynamic>>((json) => json.cast<T>());
 
   /// Parses the response body as JSON and applies a mapper function.
   ///

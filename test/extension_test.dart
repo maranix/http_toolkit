@@ -29,7 +29,55 @@ void main() {
 
     test('jsonList returns List when body is array', () {
       final response = Response('[1, 2, 3]', 200);
-      expect(response.jsonList(), [1, 2, 3]);
+      final expected = [1, 2, 3];
+
+      final haveNonTyped = response.jsonList();
+      final haveTyped = response.jsonList<int>();
+
+      expect(haveNonTyped, expected);
+
+      // We should also verify the type as well to ensure that proper types are enforced
+      expect(expected, isA<List<int>>());
+
+      const integerList = TypeMatcher<List<int>>();
+      const objectlist = TypeMatcher<List<Object>>();
+
+      expect(
+        haveNonTyped,
+        isList,
+      ); // Losely non-typed variant is still a List, passes because types are not compared only the container. `List == List`
+
+      expect(
+        haveNonTyped,
+        isNot(integerList),
+      ); // Explicitly matching the wrong type passes here because `List<Object> != List<int>`
+
+      expect(
+        haveNonTyped,
+        isA<List<Object>>(),
+      ); // Explicitly matching the correct type passes here because `List<Object> == List<Object>`
+
+      // Same principals as above
+      expect(haveTyped, isList);
+
+      expect(
+        haveTyped,
+        isA<
+          List<Object>
+        >(), // This passes because everything is an Object and so `int` itself is a child of Object class.
+      );
+
+      expect(
+        haveTyped,
+        isNot(
+          TypeMatcher<List<String>>(),
+        ), // This passes because while `String == Object` same as `int` but `String != int`.
+      );
+
+      expect(
+        haveTyped,
+        isA<List<int>>(),
+      );
     });
 
     test('jsonList throws FormatException when body is map', () {

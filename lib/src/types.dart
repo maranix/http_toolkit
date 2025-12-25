@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 
 /// A function that maps a response body of type [T] to a result of type [R].
 ///
-/// This typedef is used by `*Decoded` methods in [RequestExtension] to
+/// This typedef is used by `*Decoded` methods in `RequestExtension` to
 /// transform raw JSON data into typed domain objects.
 ///
 /// ## Type Parameters
