@@ -162,12 +162,6 @@ extension ResponseStatusExtension on http.Response {
 /// - Apply response validation before parsing
 /// - Get type-safe domain objects directly from API calls
 ///
-/// ## Type Safety
-///
-/// All methods use two type parameters:
-/// - [R]: The return type (your domain object)
-/// - [T]: The expected JSON type (usually `Map<String, dynamic>`)
-///
 /// ## Example
 ///
 /// ```dart
@@ -183,7 +177,7 @@ extension RequestExtension on http.Client {
   /// ## Parameters
   ///
   /// - [url]: The URL to request
-  /// - [mapper]: Function to transform JSON into the result type [R]
+  /// - [mapper]: Function to transform JSON type [T] into the result type [R]
   /// - [responseValidator]: Optional validator to check response before parsing
   /// - [headers]: Optional HTTP headers to include
   ///
@@ -227,10 +221,10 @@ extension RequestExtension on http.Client {
   /// ## Parameters
   ///
   /// - [url]: The URL to request
-  /// - [mapper]: Function to transform JSON into the result type [R]
+  /// - [mapper]: Function to transform JSON type [T] into the result type [R]
   /// - [responseValidator]: Optional validator to check response before parsing
   /// - [headers]: Optional HTTP headers to include
-  /// - [body]: The request body (String, List<int>, or Map<String, String>)
+  /// - [body]: The request body (String, List&lt;int&gt;, or Map&lt;String, String&gt;)
   ///
   /// ## When to Use
   ///
@@ -279,10 +273,10 @@ extension RequestExtension on http.Client {
   /// ## Parameters
   ///
   /// - [url]: The URL to request
-  /// - [mapper]: Function to transform JSON into the result type [R]
+  /// - [mapper]: Function to transform JSON type [T] into the result type [R]
   /// - [responseValidator]: Optional validator to check response before parsing
   /// - [headers]: Optional HTTP headers to include
-  /// - [body]: The request body (String, List<int>, or Map<String, String>)
+  /// - [body]: The request body (String, List&lt;int&gt;, or Map&lt;String, String&gt;)
   ///
   /// ## When to Use
   ///
@@ -330,10 +324,10 @@ extension RequestExtension on http.Client {
   /// ## Parameters
   ///
   /// - [url]: The URL to request
-  /// - [mapper]: Function to transform JSON into the result type [R]
+  /// - [mapper]: Function to transform JSON type [T] into the result type [R]
   /// - [responseValidator]: Optional validator to check response before parsing
   /// - [headers]: Optional HTTP headers to include
-  /// - [body]: The request body (String, List<int>, or Map<String, String>)
+  /// - [body]: The request body (String, List&lt;int&gt;, or Map&lt;String, String&gt;)
   ///
   /// ## When to Use
   ///
@@ -381,10 +375,10 @@ extension RequestExtension on http.Client {
   /// ## Parameters
   ///
   /// - [url]: The URL to request
-  /// - [mapper]: Function to transform JSON into the result type [R]
+  /// - [mapper]: Function to transform JSON type [T] into the result type [R]
   /// - [responseValidator]: Optional validator to check response before parsing
   /// - [headers]: Optional HTTP headers to include
-  /// - [body]: Optional request body
+  /// - [body]: The request body (String, List&lt;int&gt;, or Map&lt;String, String&gt;)
   ///
   /// ## When to Use
   ///
@@ -419,7 +413,7 @@ extension RequestExtension on http.Client {
   /// ## Notes
   ///
   /// Many APIs return 204 No Content for successful deletes. In that case,
-  /// use [ResponseValidator.successOrNoContent] and handle the empty body
+  /// use `ResponseValidator.successOrNoContent` and handle the empty body
   /// appropriately in your mapper.
   Future<R> deleteDecoded<R, T extends Object>(
     Uri url, {
