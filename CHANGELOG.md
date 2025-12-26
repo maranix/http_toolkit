@@ -33,7 +33,9 @@
 ### Improvements
 
 - **`RetryMiddleware`**: Enhanced callback signatures provide access to attempt count and delay duration for better observability and control over retry logic.
-- **Example**: Updated with `RetryMiddleware` demo showcasing new callback parameters.
+- **Example**: 
+    - Updated with `RetryMiddleware` demo showcasing new callback parameters.
+    - Added example usage of `getDecoded<R, T>`.
 
 ## 1.0.0+1
 
