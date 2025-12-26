@@ -100,13 +100,17 @@ extension ResponseBodyExtension on http.Response {
   ///   (json) => json['data'] as List<dynamic>,
   /// );
   /// ```
-  R mapJson<R, T extends Object>(ResponseBodyMapper<R, T> mapper) {
+  R mapJson<R, T extends Object>([ResponseBodyMapper<R, T>? mapper]) {
     final decoded = jsonDecode(body);
     if (decoded is! T) {
       throw FormatException(
         'Expected JSON of type $T, '
         'got ${decoded.runtimeType}',
       );
+    }
+
+    if (mapper == null) {
+      return decoded as R;
     }
 
     return mapper(decoded);
@@ -178,7 +182,7 @@ extension RequestExtension on http.Client {
   /// ## Parameters
   ///
   /// - [url]: The URL to request
-  /// - [mapper]: Function to transform JSON type [T] into the result type [R]
+  /// - [mapper]: Optional function to transform JSON type [T] into the result type [R]
   /// - [responseValidator]: Optional validator to check response before parsing
   /// - [headers]: Optional HTTP headers to include
   ///
@@ -204,9 +208,9 @@ extension RequestExtension on http.Client {
   ///   responseValidator: ResponseValidator.success,
   /// );
   /// ```
-  Future<R> getDecoded<R, T extends Object>(
+  Future<R> getDecoded<R extends dynamic, T extends Object>(
     Uri url, {
-    required ResponseBodyMapper<R, T> mapper,
+    ResponseBodyMapper<R, T>? mapper,
     ResponseValidator? responseValidator,
     Map<String, String>? headers,
   }) async {
@@ -222,7 +226,7 @@ extension RequestExtension on http.Client {
   /// ## Parameters
   ///
   /// - [url]: The URL to request
-  /// - [mapper]: Function to transform JSON type [T] into the result type [R]
+  /// - [mapper]: Optional function to transform JSON type [T] into the result type [R]
   /// - [responseValidator]: Optional validator to check response before parsing
   /// - [headers]: Optional HTTP headers to include
   /// - [body]: The request body (String, List&lt;int&gt;, or Map&lt;String, String&gt;)
@@ -251,9 +255,9 @@ extension RequestExtension on http.Client {
   ///   responseValidator: ResponseValidator.created,
   /// );
   /// ```
-  Future<R> postDecoded<R, T extends Object>(
+  Future<R> postDecoded<R extends dynamic, T extends Object>(
     Uri url, {
-    required ResponseBodyMapper<R, T> mapper,
+    ResponseBodyMapper<R, T>? mapper,
     ResponseValidator? responseValidator,
     Map<String, String>? headers,
     Object? body,
@@ -274,7 +278,7 @@ extension RequestExtension on http.Client {
   /// ## Parameters
   ///
   /// - [url]: The URL to request
-  /// - [mapper]: Function to transform JSON type [T] into the result type [R]
+  /// - [mapper]: Optional function to transform JSON type [T] into the result type [R]
   /// - [responseValidator]: Optional validator to check response before parsing
   /// - [headers]: Optional HTTP headers to include
   /// - [body]: The request body (String, List&lt;int&gt;, or Map&lt;String, String&gt;)
@@ -302,7 +306,7 @@ extension RequestExtension on http.Client {
   ///   responseValidator: ResponseValidator.success,
   /// );
   /// ```
-  Future<R> putDecoded<R, T extends Object>(
+  Future<R> putDecoded<R extends dynamic, T extends Object>(
     Uri url, {
     required ResponseBodyMapper<R, T> mapper,
     ResponseValidator? responseValidator,
@@ -325,7 +329,7 @@ extension RequestExtension on http.Client {
   /// ## Parameters
   ///
   /// - [url]: The URL to request
-  /// - [mapper]: Function to transform JSON type [T] into the result type [R]
+  /// - [mapper]: Optional function to transform JSON type [T] into the result type [R]
   /// - [responseValidator]: Optional validator to check response before parsing
   /// - [headers]: Optional HTTP headers to include
   /// - [body]: The request body (String, List&lt;int&gt;, or Map&lt;String, String&gt;)
@@ -353,9 +357,9 @@ extension RequestExtension on http.Client {
   ///   responseValidator: ResponseValidator.success,
   /// );
   /// ```
-  Future<R> patchDecoded<R, T extends Object>(
+  Future<R> patchDecoded<R extends dynamic, T extends Object>(
     Uri url, {
-    required ResponseBodyMapper<R, T> mapper,
+    ResponseBodyMapper<R, T>? mapper,
     ResponseValidator? responseValidator,
     Map<String, String>? headers,
     Object? body,
@@ -376,7 +380,7 @@ extension RequestExtension on http.Client {
   /// ## Parameters
   ///
   /// - [url]: The URL to request
-  /// - [mapper]: Function to transform JSON type [T] into the result type [R]
+  /// - [mapper]: Optional function to transform JSON type [T] into the result type [R]
   /// - [responseValidator]: Optional validator to check response before parsing
   /// - [headers]: Optional HTTP headers to include
   /// - [body]: The request body (String, List&lt;int&gt;, or Map&lt;String, String&gt;)
@@ -416,9 +420,9 @@ extension RequestExtension on http.Client {
   /// Many APIs return 204 No Content for successful deletes. In that case,
   /// use `ResponseValidator.successOrNoContent` and handle the empty body
   /// appropriately in your mapper.
-  Future<R> deleteDecoded<R, T extends Object>(
+  Future<R> deleteDecoded<R extends dynamic, T extends Object>(
     Uri url, {
-    required ResponseBodyMapper<R, T> mapper,
+    ResponseBodyMapper<R, T>? mapper,
     ResponseValidator? responseValidator,
     Map<String, String>? headers,
     Object? body,

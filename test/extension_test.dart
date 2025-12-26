@@ -13,6 +13,21 @@ Response _createResponse(
   return Response(jsonEncode(body), statusCode, headers: headers);
 }
 
+class SampleResponseBody {
+  const SampleResponseBody(this.id);
+
+  factory SampleResponseBody.fromJson(Map<String, dynamic> json) {
+    if (json case {'id': final int id}) {
+      return SampleResponseBody(id);
+    }
+    throw const FormatException('Invalid JSON');
+  }
+
+  final int id;
+
+  Map<String, dynamic> toJson() => {'id': id};
+}
+
 void main() {
   group('ResponseBodyExtensions', () {
     test('json returns decoded JSON', () {
@@ -142,7 +157,6 @@ void main() {
       expect(_createResponse(600, '').isServerError, isFalse);
     });
   });
-
   group('ClientExtensions', () {
     group('getDecoded', () {
       test('returns mapped object on success', () async {
@@ -154,10 +168,10 @@ void main() {
 
         final result = await client.getDecoded(
           Uri.parse('https://example.com'),
-          mapper: (json) => (json! as Map<String, dynamic>)['id'] as int,
+          mapper: SampleResponseBody.fromJson,
         );
 
-        expect(result, 1);
+        expect(result.id, 1);
       });
 
       test('validates response with validator', () {
@@ -169,10 +183,7 @@ void main() {
         expect(
           () => client.getDecoded(
             Uri.parse('https://example.com'),
-            mapper: (json) => json,
-            responseValidator: (response) {
-              ResponseValidator.statusCode(response, 200);
-            },
+            responseValidator: (res) => ResponseValidator.statusCode(res, 200),
           ),
           throwsA(isA<HttpException>()),
         );
@@ -191,10 +202,10 @@ void main() {
         final result = await client.postDecoded(
           Uri.parse('https://example.com'),
           body: '{"name":"test"}',
-          mapper: (json) => (json! as Map<String, dynamic>)['id'] as int,
+          mapper: SampleResponseBody.fromJson,
         );
 
-        expect(result, 1);
+        expect(result.id, 1);
       });
     });
 
@@ -208,10 +219,10 @@ void main() {
 
         final result = await client.putDecoded(
           Uri.parse('https://example.com'),
-          mapper: (json) => (json! as Map<String, dynamic>)['id'] as int,
+          mapper: SampleResponseBody.fromJson,
         );
 
-        expect(result, 1);
+        expect(result.id, 1);
       });
     });
 
@@ -225,10 +236,10 @@ void main() {
 
         final result = await client.patchDecoded(
           Uri.parse('https://example.com'),
-          mapper: (json) => (json! as Map<String, dynamic>)['id'] as int,
+          mapper: SampleResponseBody.fromJson,
         );
 
-        expect(result, 1);
+        expect(result.id, 1);
       });
     });
 
@@ -242,10 +253,10 @@ void main() {
 
         final result = await client.deleteDecoded(
           Uri.parse('https://example.com'),
-          mapper: (json) => (json! as Map<String, dynamic>)['id'] as int,
+          mapper: SampleResponseBody.fromJson,
         );
 
-        expect(result, 1);
+        expect(result.id, 1);
       });
     });
 
@@ -256,7 +267,6 @@ void main() {
 
         await client.getDecoded(
           Uri.parse('https://example.com'),
-          mapper: (_) {},
           responseValidator: ResponseValidator.success,
         );
       });
@@ -268,7 +278,6 @@ void main() {
         expect(
           () => client.getDecoded(
             Uri.parse('https://example.com'),
-            mapper: (_) {},
             responseValidator: ResponseValidator.success,
           ),
           throwsA(isA<HttpException>()),
@@ -281,7 +290,6 @@ void main() {
 
         await client.postDecoded(
           Uri.parse('https://example.com'),
-          mapper: (_) {},
           responseValidator: ResponseValidator.created,
         );
       });
@@ -293,7 +301,6 @@ void main() {
         expect(
           () => client.postDecoded(
             Uri.parse('https://example.com'),
-            mapper: (_) {},
             responseValidator: ResponseValidator.created,
           ),
           throwsA(isA<HttpException>()),
@@ -306,7 +313,6 @@ void main() {
 
         await client.deleteDecoded(
           Uri.parse('https://example.com'),
-          mapper: (_) {},
           responseValidator: ResponseValidator.successOrNoContent,
         );
       });
@@ -323,7 +329,6 @@ void main() {
 
         await client.getDecoded(
           Uri.parse('https://example.com'),
-          mapper: (_) {},
           responseValidator: ResponseValidator.jsonContentType,
         );
       });
@@ -338,7 +343,6 @@ void main() {
         expect(
           () => client.getDecoded(
             Uri.parse('https://example.com'),
-            mapper: (_) {},
             responseValidator: ResponseValidator.jsonContentType,
           ),
           throwsA(isA<HttpException>()),
@@ -352,7 +356,6 @@ void main() {
         expect(
           () => client.getDecoded(
             Uri.parse('https://example.com'),
-            mapper: (_) {},
             responseValidator: ResponseValidator.notEmpty,
           ),
           throwsA(isA<HttpException>()),
@@ -370,7 +373,6 @@ void main() {
         expect(
           () => client.getDecoded(
             Uri.parse('https://example.com'),
-            mapper: (_) {},
           ),
           throwsFormatException,
         );
@@ -383,7 +385,6 @@ void main() {
         expect(
           client.getDecoded<void, Map<String, dynamic>>(
             Uri.parse('https://example.com'),
-            mapper: (_) {},
           ),
           throwsFormatException,
         );
