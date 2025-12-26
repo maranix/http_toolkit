@@ -23,7 +23,7 @@ Add the dependency to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  http_toolkit: ^1.0.0+1
+  http_toolkit: ^2.0.0+1
 ```
 
 ## Usage
@@ -129,16 +129,31 @@ class User {
   User({required this.id, required this.name});
   
   factory User.fromJson(Map<String, dynamic> json) {
-    return User(id: json['id'] as int, name: json['name'] as String);
+      if (json case {
+          'id': final int id,
+          'name': final String name,
+      }) {
+          return User(id: id, name: name);
+      }
+
+      throw const FormatException("Malformed JSON body");
   }
 }
 
 // Fetch and parse in one step
-final user = await client.getDecoded<User, Map<String, dynamic>>(
+final user = await client.getDecoded<User, Map<String, dynamic>>( // Types Mentioned Explicitly
   Uri.parse('https://api.example.com/user/1'),
   mapper: User.fromJson,
   responseValidator: ResponseValidator.success,
 );
+
+// Types can also be inferred from `mapper`.
+// final user = await client.getDecoded( 
+//   Uri.parse('https://api.example.com/user/1'),
+//   mapper: User.fromJson,
+//   responseValidator: ResponseValidator.success,
+// );
+
 ```
 
 Available methods:
@@ -213,6 +228,7 @@ Convenient extensions are available for `Response` and `Client`.
 // JSON parsing
 var map = response.jsonMap(); // Map<String, dynamic>
 var list = response.jsonList(); // List<dynamic>
+var listOfInt = response.jsonList<int>(); // typed List<int>
 
 // Status checks
 if (response.isSuccess) { ... } // 200-299
