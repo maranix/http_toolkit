@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.0+1
+
+- Minor documentation updates
+
 ## 2.0.0
 
 ### Breaking Changes
