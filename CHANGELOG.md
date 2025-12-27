@@ -1,45 +1,57 @@
 # Changelog
 
+## 3.0.0
+
+A major release focused on architectural cleanup, type safety, and developer experience.
+
+### 💥 Breaking Changes
+
+- **Interceptors Removed**: The `Interceptors` API has been completely removed in favor of the new `Middleware` pipeline.
+    - Use `RequestMiddleware` for synchronous side effects.
+    - Use `RequestTransformerMiddleware` for modifying requests.
+    - Use `ResponseMiddleware` for processing responses.
+    - Use `AsyncMiddleware` for wrapping request lifecycles.
+- **RetryMiddleware**:
+    - `whenError` callback now receives `(Object error, int attempt, Duration nextAttempt)`.
+    - `whenResponse` callback now receives `(BaseResponse response, int attempt, Duration totalDuration)`.
+    - `BackoffStrategy.getDelay` renamed to `getDelayDuration`.
+    - `BackoffStrategy` is now an interface rather than a typedef.
+- **Client Extensions**: `getWith` has been removed. Use `getDecoded` instead.
+
+### ✨ New Features
+
+- **Safe JSON Extensions**: New `*Decoded` methods on `Client` (`getDecoded`, `postDecoded`, `putDecoded`, `patchDecoded`, `deleteDecoded`) that handle:
+    - JSON decoding
+    - Type casting (safe mapping to your models)
+    - Response validation
+- **ResponseValidator**: A utility class for validating standard HTTP responses:
+    - `ResponseValidator.success` (200-299)
+    - `ResponseValidator.created` (201)
+    - `ResponseValidator.jsonContentType` (application/json)
+- **CloneRequestX**: A safe `clone()` extension for `http.BaseRequest` to allow middlewares to "mutate" requests by creating copies.
+- **Types**: New `types.dart` exports `ResponseBodyMapper<R, T>` and `ResponseValidatorCallback`.
+
+### 🚀 Improvements
+
+- **Documentation**: Complete rewrite of the library documentation, README, and examples.
+- **Architecture**: The `Middleware` system is now strictly typed and composed using an "Onion Architecture", ensuring predictable execution order.
+- **Logging**: `LoggerMiddleware` now supports a generic `LoggerInterface` for integrating with any logging system.
+
 ## 2.0.0+1
 
-- Minor documentation updates
+- Minor documentation updates.
 
 ## 2.0.0
 
 ### Breaking Changes
 
-- **`BackoffStrategy`**: Renamed `getDelay` to `getDelayDuration` for clarity.
-- **`RetryMiddleware.whenError`**: Signature changed from `bool Function(Object error)` to `bool Function(Object error, int attempt, Duration nextAttempt)`.
-- **`RetryMiddleware.whenResponse`**: Signature changed from `bool Function(BaseResponse response)` to `bool Function(BaseResponse response, int attempt, Duration totalDuration)`.
-- **Removed `ClientExtensions.getWith`**: Use `getDecoded` with appropriate parameters instead.
+- **Task Group API**: `TaskGroup` now supports generic `Label` and `Tags` types for better type safety.
+- **Task Execution**: `Task.run` and `Task.watch` now enforce type matching for return values.
 
 ### New Features
 
-- **`ResponseValidator`**: A new utility class providing reusable HTTP response validation functions:
-  - `statusCode(response, code)` - Validates specific status code
-  - `success(response)` - Validates 2xx range (200-299)
-  - `created(response)` - Validates 201 status
-  - `successOrNoContent(response)` - Validates 200 or 204
-  - `jsonContentType(response)` - Validates `application/json` content-type
-  - `notEmpty(response)` - Validates non-empty response body
-
-- **`*Decoded` Client Extensions**: New type-safe JSON decoding methods on `http.Client`:
-  - `getDecoded<R, T>` - GET with JSON mapping and optional validation
-  - `postDecoded<R, T>` - POST with JSON mapping and optional validation
-  - `putDecoded<R, T>` - PUT with JSON mapping and optional validation
-  - `patchDecoded<R, T>` - PATCH with JSON mapping and optional validation
-  - `deleteDecoded<R, T>` - DELETE with JSON mapping and optional validation
-
-- **Type Aliases**: New `types.dart` exports:
-  - `ResponseBodyMapper<R, T>` - Function type for mapping response bodies
-  - `ResponseValidator` - Function type for validating responses
-
-### Improvements
-
-- **`RetryMiddleware`**: Enhanced callback signatures provide access to attempt count and delay duration for better observability and control over retry logic.
-- **Example**: 
-    - Updated with `RetryMiddleware` demo showcasing new callback parameters.
-    - Added example usage of `getDecoded<R, T>`.
+- **Generic Tasks**: Tasks can now return typed results.
+- **Task Caching**: Improved caching mechanism for tasks with identical keys.
 
 ## 1.0.0+1
 
@@ -48,12 +60,3 @@
 ## 1.0.0
 
 - Initial release.
-- **Client**: A robust HTTP client wrapper compatible with key `http` package logic.
-- **Middleware**: New `Middleware` interface for structured request/response processing.
-- **Retry**: `RetryMiddleware` with configurable `BackoffStrategy` (Exponential, Linear, Fixed).
-- **Logger**: `LoggerMiddleware` with support for logging headers and bodies, using `print` by default.
-- **Auth**: `BearerAuthMiddleware` and `BasicAuthMiddleware`.
-- **BaseUrl**: `BaseUrlMiddleware` for convenient URL handling.
-- **Interceptors**: Lightweight hooks for `onRequest`, `onResponse`, and `onError`.
-- **Extensions**: Useful extensions for `http.Response` (JSON parsing) and `http.Client`.
-- Added `ClientExtensions` for easier query parameter handling.

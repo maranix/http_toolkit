@@ -3,26 +3,24 @@
 import 'package:http_toolkit/http_toolkit.dart';
 
 void main() async {
-  // 1. Create the client with middlewares and interceptors
   final client = Client(
     middlewares: [
-      BaseUrlMiddleware(
-        Uri.parse('https://jsonplaceholder.typicode.com'),
+      LoggerMiddleware(
+        logger: FunctionalLogger(logBody: true, logHeaders: true),
+        logStreamedResponseBody: true,
       ),
-      const LoggerMiddleware(logBody: true),
+      const BaseUrlMiddleware('https://jsonplaceholder.typicode.com'),
       const BearerAuthMiddleware('super-secret-token'),
       const RetryMiddleware(
         maxRetries: 2,
-        strategy: FixedDelayStrategy(Duration(milliseconds: 200)),
+        strategy: .fixed(Duration(milliseconds: 200)),
       ),
       const HeadersMiddleware(headers: {'User-Agent': 'HttpToolkit/1.0'}),
     ],
   );
 
   try {
-    final response = await client.get(
-      Uri.parse('/todos/1'),
-    );
+    final response = await client.get(Uri.parse('/todos/1'));
 
     if (response.isSuccess) {
       print('Done');

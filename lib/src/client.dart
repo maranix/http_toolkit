@@ -1,87 +1,134 @@
 import 'dart:async';
 import 'package:http/http.dart' as http;
-import 'interceptor.dart';
 import 'middleware.dart';
 
-/// A powerful HTTP client wrapper that supports interceptors and middleware.
+/// A powerful, composable HTTP client wrapper.
+///
+/// The [Client] wraps a standard [http.Client] and executes a pipeline of
+/// [Middleware] for every request. It allows you to compose behaviors like
+/// authentication, logging, retries, and base URL resolution in a declarative way.
+///
+/// ## Middleware Pipeline Order
+///
+/// The middleware pipeline is executed in a specific order to ensure predictable behavior:
+///
+/// 1.  **Async Middlewares**: These wrap the entire request execution. They are versatile and can
+///     perform pre-request work, post-response work, error handling, and retries.
+///     *   Executed in **LIFO (Last-In-First-Out)** order (like onion layers).
+///     *   Example: `RetryMiddleware`, `LoggerMiddleware` (Request duration).
+///
+/// 2.  **Request Middlewares**: Synchronous side-effects before the request is sent.
+///     *   Executed in **FIFO (First-In-First-Out)** order.
+///     *   Useful for logging request details or updating external state.
+///     *   *Cannot* modify the request explicitly (use Transformers for that).
+///
+/// 3.  **Request Transformer Middlewares**: Modify the request object before it is sent.
+///     *   Executed in **LIFO (Last-In-First-Out)** order.
+///     *   This allows later middlewares to wrap earlier ones (e.g., a specific API client
+///         wrapping a base client might want its BaseURL to take precedence).
+///     *   Example: `BaseUrlMiddleware`, `BearerAuthMiddleware` (via header injection).
+///
+/// 4.  **Network Call**: The inner [http.Client] sends the request.
+///
+/// 5.  **Response Middlewares**: Process implementation-specific response logic.
+///     *   Executed in **LIFO (Last-In-First-Out)** order.
+///     *   Example: Global error checking (throwing on 401).
+///
+/// ## Example
+///
+/// ```dart
+/// final client = Client(
+///   middlewares: [
+///     const RetryMiddleware(maxRetries: 3), // (1) Outer layer (Async)
+///     const LoggerMiddleware(),             // (2) Inner layer (Async)
+///     const BaseUrlMiddleware('...'),       // (3) Request Transformer
+///   ],
+/// );
+/// ```
 class Client extends http.BaseClient {
+  /// Creates a new HTTP Toolkit client.
+  ///
+  /// [inner] is the underlying [http.Client] used to send requests. Defaults to `http.Client()`.
+  /// [middlewares] is the list of middleware to apply to every request.
   Client({
     http.Client? inner,
-    List<Interceptor>? interceptors,
-    List<Middleware>? middlewares,
-  }) : _inner = inner ?? http.Client(),
-       _interceptors = interceptors ?? [],
-       _middlewares = middlewares ?? [] {
-    final pipeline = Pipeline()..addAll(_middlewares);
-    _pipeline = pipeline.addHandler(_inner.send);
+    List<Middleware> middlewares = const [],
+  }) : _inner = inner ?? http.Client() {
+    _handler = _composeHandler(_inner.send, middlewares);
   }
 
   final http.Client _inner;
-  final List<Interceptor> _interceptors;
-  final List<Middleware> _middlewares;
-  late final Handler _pipeline;
+  late final RequestHandler _handler;
+
+  static RequestHandler _composeHandler(
+    RequestHandler innerHandler,
+    Iterable<Middleware> middlewares,
+  ) {
+    if (middlewares.isEmpty) {
+      return innerHandler;
+    }
+
+    var handler = innerHandler;
+
+    // Filter Async, Request and Response middlewares ahead of handler composition
+    final asyncMiddlewares = List<AsyncMiddleware>.unmodifiable(
+      middlewares.whereType<AsyncMiddleware>(),
+    );
+
+    final requestMiddlewares = List<RequestMiddleware>.unmodifiable(
+      middlewares.whereType<RequestMiddleware>(),
+    );
+
+    final requestTransformers = List<RequestTransformerMiddleware>.unmodifiable(
+      middlewares.whereType<RequestTransformerMiddleware>(),
+    );
+
+    final responseMiddlewares = List<ResponseMiddleware>.unmodifiable(
+      middlewares.whereType<ResponseMiddleware>(),
+    );
+
+    final hasAsync = asyncMiddlewares.isNotEmpty;
+    final hasRequest = requestMiddlewares.isNotEmpty;
+    final hasRequestTransformers = requestTransformers.isNotEmpty;
+    final hasResponse = responseMiddlewares.isNotEmpty;
+
+    if (hasAsync) {
+      for (var i = asyncMiddlewares.length - 1; i >= 0; i--) {
+        final middleware = asyncMiddlewares[i];
+        final next = handler;
+
+        handler = (request) => middleware.handle(request, next);
+      }
+    }
+
+    return (http.BaseRequest request) async {
+      if (hasRequest) {
+        for (var i = 0; i < requestMiddlewares.length; i++) {
+          requestMiddlewares[i].onRequest(request);
+        }
+      }
+
+      if (hasRequestTransformers) {
+        for (var i = requestTransformers.length - 1; i >= 0; i--) {
+          request = requestTransformers[i].onRequest(request);
+        }
+      }
+
+      var response = await handler(request);
+
+      if (hasResponse) {
+        for (var i = responseMiddlewares.length - 1; i >= 0; i--) {
+          response = responseMiddlewares[i].onResponse(response);
+        }
+      }
+
+      return response;
+    };
+  }
 
   @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    var currentRequest = request;
-
-    // Run Request Interceptors
-    for (final interceptor in _interceptors) {
-      currentRequest = await interceptor.onRequest(currentRequest);
-    }
-
-    try {
-      // Execute Middleware Pipeline
-      final response = await _pipeline(currentRequest);
-
-      // Run Response Interceptors
-      http.BaseResponse currentResponse = response;
-      for (final interceptor in _interceptors) {
-        currentResponse = await interceptor.onResponse(currentResponse);
-      }
-
-      // Ensure we return a StreamedResponse as expected by BaseClient.send
-      if (currentResponse is http.StreamedResponse) {
-        return currentResponse;
-      } else {
-        if (currentResponse is http.Response) {
-          return http.StreamedResponse(
-            http.ByteStream.fromBytes(currentResponse.bodyBytes),
-            currentResponse.statusCode,
-            contentLength: currentResponse.contentLength,
-            request: currentResponse.request,
-            headers: currentResponse.headers,
-            isRedirect: currentResponse.isRedirect,
-            persistentConnection: currentResponse.persistentConnection,
-            reasonPhrase: currentResponse.reasonPhrase,
-          );
-        }
-
-        throw StateError(
-          'Client.send must return a StreamedResponse. '
-          'Got ${currentResponse.runtimeType}',
-        );
-      }
-    } on Exception catch (e, stackTrace) {
-      try {
-        // If it returns a response, we consider the error recovered.
-        // If it throws, we bubble up.
-        for (final interceptor in _interceptors) {
-          try {
-            return await interceptor.onError(e, stackTrace)
-                as http.StreamedResponse;
-          } catch (newError) {
-            if (interceptor == _interceptors.last) {
-              rethrow;
-            }
-            continue;
-          }
-        }
-        rethrow;
-      } catch (finalError) {
-        rethrow;
-      }
-    }
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    return _handler(request);
   }
 
   @override

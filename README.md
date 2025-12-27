@@ -1,244 +1,216 @@
-# HTTP Toolkit
+# http_toolkit
 
-A fully featured, composable HTTP client wrapper for Dart, adding missing "batteries" to the standard `http` package.
+> 🔋 **The missing battery for Dart's `http` package.**
 
-`http_toolkit` provides a powerful `Client` that supports **Interceptors**, **Middleware Pipelines**, and convenient **Extensions**, while retaining maximum compatibility with the standard `http.BaseClient` interface.
+`http_toolkit` supercharges your HTTP requests with a composable **Middleware Pipeline**, **Type-Safe JSON utilities**, and robust **Retries**. It's designed to be a drop-in replacement for `http.Client` while solving the most common challenges in building robust Dart/Flutter network layers.
 
-## Features
+[![pub package](https://img.shields.io/pub/v/http_toolkit.svg)](https://pub.dev/packages/http_toolkit)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-- **🚀 Interceptors**: Modify requests, responses, and handle errors globally.
-- **⛓️ Middleware Pipeline**: Compose behavior like authentication, logging, and retries.
-- **🛠️ Built-in Middlewares**:
-    - `RetryMiddleware`: Exponential backoff and customizable retry logic.
-    - `LoggerMiddleware`: Debug requests and responses easily.
-    - `BearerAuthMiddleware` & `BasicAuthMiddleware`: Simple authentication injection.
-    - `HeadersMiddleware`: Global default headers.
-- **⚡ Extensions**: Helper getters for `Response` (JSON decoding, status checks) and `Client` (typed JSON requests).
-- **✅ ResponseValidator**: Reusable response validators for common HTTP patterns.
-- **💪 Flexible**: Works with any `http.Client` implementation.
+## 🌟 Features
 
-## Getting Started
+- **🛡️ Type-Safe**: Eliminate unsafe casting with `getDecoded`, `postDecoded`, etc.
+- **🔗 Composable**: Build complex behavior (Auth + Retry + Logging) using a simple list of middlewares.
+- **⚡ Reliable**: Smart retries with exponential backoff to handle flaky networks.
+- **📝 Observable**: Detailed logging and request lifecycle visibility.
+- **🧩 Compatible**: implementing `http.BaseClient`, so it works with all your existing libraries.
 
-Add the dependency to your `pubspec.yaml`:
+---
+
+## 🏗️ Architecture
+
+Unlike the simple `interceptor` patterns found in other libraries, `http_toolkit` uses a structured **Middleware Pipeline**.
+
+Every request flows through layers of middleware before reaching the network, and the response flows back out through them. This "Onion Architecture" allows for powerful behaviors like:
+
+1.  **AsyncMiddleware**: Wraps the *entire* lifecycle (e.g., retries, timing).
+2.  **RequestMiddleware**: synchronous inspection (e.g., analytics).
+3.  **RequestTransformer**: modifies the request (e.g., injecting auth tokens).
+4.  **Network**: The actual HTTP call.
+5.  **ResponseMiddleware**: validates or transforms the response.
+
+### Visualization
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant Pipeline
+    participant Network
+    
+    App->>Pipeline: Send Request
+    Pipeline->>Pipeline: Apply Transformers (Auth, URL)
+    Pipeline->>Network: Execute HTTP Call
+    Network-->>Pipeline: Receive Response
+    Pipeline->>Pipeline: Validate Response
+    Pipeline-->>App: Return Result
+```
+
+---
+
+## 🛠️ Usage Guides
+
+### 1. Installation
 
 ```yaml
 dependencies:
-  http_toolkit: ^2.0.0+1
+  http_toolkit: ^3.0.0
 ```
 
-## Usage
+### 2. Quick Start
 
-### Basic Usage
-
-Use `http_toolkit.Client` as a drop-in replacement for `http.Client`.
-
-```dart
-import 'package:http_toolkit/http_toolkit.dart' as http_toolkit;
-
-void main() async {
-  final client = http_toolkit.Client(
-    middlewares: [
-      BaseUrlMiddleware(Uri.parse('https://api.example.com')),
-      LoggerMiddleware(),
-      RetryMiddleware(maxRetries: 3),
-    ],
-  );
-
-  final response = await client.get(Uri.parse('/data'));
-  
-  if (response.isSuccess) {
-    print(response.jsonMap()); // Typed JSON access
-  }
-}
-```
-
-### Middlewares
-
-Middlewares wrap the request execution. They run in the order defined.
-
-```dart
-final client = Client(
-  middlewares: [
-    // 1. Log the request
-    LoggerMiddleware(logHeaders: true),
-    
-    // 2. Add Auth Token
-    BearerAuthMiddleware('my-secret-token'),
-    
-    // 3. Retry if network fails or 503
-    RetryMiddleware(maxRetries: 2),
-    ]
-);
-```
-
-You can also create custom middleware by implementing the `Middleware` interface.
+Create a client and compose your middlewares:
 
 ```dart
 import 'package:http_toolkit/http_toolkit.dart';
 
-class MyMiddleware implements Middleware {
-  @override
-  Future<StreamedResponse> handle(BaseRequest request, Handler next) async {
-    print('Request: ${request.url}');
-    final response = await next(request);
-    print('Response: ${response.statusCode}');
-    return response;
-  }
+void main() async {
+  final client = Client(
+    middlewares: [
+      // 1. Log network traffic
+      LoggerMiddleware(logBody: true),
+      
+      // 2. Retry failed requests (e.g., timeout, 503)
+      const RetryMiddleware(
+        maxRetries: 3,
+        strategy: BackoffStrategy.exponential(),
+      ),
+      
+      // 3. Inject "Authorization: Bearer <token>"
+      const BearerAuthMiddleware('your-secret-token'),
+      
+      // 4. Resolve paths against a base URL
+      const BaseUrlMiddleware('https://api.example.com'),
+    ],
+  );
+
+  // Use type-safe extensions!
+  final user = await client.getDecoded<User, Map<String, dynamic>>(
+    Uri.parse('/users/1'),
+    mapper: User.fromJson,
+  );
 }
 ```
 
-### Built-in Middleware
+---
 
-`http_toolkit` comes with several built-in middlewares:
+### 3. Safe JSON Requests 🛡️
 
-- **`RetryMiddleware`**: Retries failed requests with configurable backoff strategies.
-  ```dart
-  RetryMiddleware(
-    maxRetries: 3,
-    strategy: ExponentialBackoffStrategy(initialDelay: Duration(seconds: 1)),
-    // Observe retry attempts with new callback parameters
-    whenError: (error, attempt, nextDelay) {
-      print('Attempt $attempt failed, retrying in ${nextDelay.inSeconds}s');
-      return true; // Return true to retry
-    },
-    whenResponse: (response, attempt, elapsed) {
-      print('Got response on attempt $attempt after ${elapsed.inMilliseconds}ms');
-      return response.statusCode >= 500; // Retry on server errors
-    },
-  )
-  ```
-- **`LoggerMiddleware`**: Logs requests and responses to the console.
-  ```dart
-  LoggerMiddleware(logHeaders: true, logBody: true)
-  ```
-- **`BearerAuthMiddleware`**: Injects `Authorization: Bearer <token>` header.
-- **`BasicAuthMiddleware`**: Injects `Authorization: Basic <credentials>` header.
-- **`HeadersMiddleware`**: Adds default headers to every request.
-- **`BaseUrlMiddleware`**: Prepends a base URL to request paths.
+Stop writing repetitive `jsonDecode` boilerplate and unsafe `as Map` casts.
 
-### Typed JSON Requests
-
-Use `*Decoded` methods for type-safe JSON parsing with optional response validation:
-
+**Problem**:
 ```dart
-// Define your model
-class User {
-  final int id;
-  final String name;
-  
-  User({required this.id, required this.name});
-  
-  factory User.fromJson(Map<String, dynamic> json) {
-      if (json case {
-          'id': final int id,
-          'name': final String name,
-      }) {
-          return User(id: id, name: name);
-      }
-
-      throw const FormatException("Malformed JSON body");
-  }
-}
-
-// Fetch and parse in one step
-final user = await client.getDecoded<User, Map<String, dynamic>>( // Types Mentioned Explicitly
-  Uri.parse('https://api.example.com/user/1'),
-  mapper: User.fromJson,
-  responseValidator: ResponseValidator.success,
-);
-
-// Types can also be inferred from `mapper`.
-// final user = await client.getDecoded( 
-//   Uri.parse('https://api.example.com/user/1'),
-//   mapper: User.fromJson,
-//   responseValidator: ResponseValidator.success,
-// );
-
+// ❌ Traditional way
+final response = await client.get(uri);
+final json = jsonDecode(response.body) as Map<String, dynamic>;
+final user = User.fromJson(json);
 ```
 
-Available methods:
-- `getDecoded` - GET with JSON decoding
-- `postDecoded` - POST with JSON decoding
-- `putDecoded` - PUT with JSON decoding
-- `patchDecoded` - PATCH with JSON decoding
-- `deleteDecoded` - DELETE with JSON decoding
-
-### Response Validators
-
-Use `ResponseValidator` to validate responses before parsing:
-
+**Solution**:
 ```dart
-// Validate successful response (200-299)
-await client.getDecoded(
+// ✅ The http_toolkit way
+final user = await client.getDecoded(
   uri,
   mapper: User.fromJson,
+  // Optional: Add validation before parsing
   responseValidator: ResponseValidator.success,
 );
+```
 
-// Validate created (201)
+**Supported Methods**:
+- `getDecoded<R, T>`
+- `postDecoded<R, T>`
+- `putDecoded<R, T>`
+- `patchDecoded<R, T>`
+- `deleteDecoded<R, T>`
+
+#### Response Validation
+
+Validate responses *before* you try to parse them.
+
+```dart
 await client.postDecoded(
   uri,
-  body: jsonEncode(data),
-  mapper: User.fromJson,
-  responseValidator: ResponseValidator.created,
-);
-
-// Combine validators
-await client.getDecoded(
-  uri,
-  mapper: User.fromJson,
+  body: payload,
+  // Built-in validators:
+  // - success: 200-299
+  // - created: 201
+  // - successOrNoContent: 200 or 204
+  // - jsonContentType: ensures content-type is application/json
   responseValidator: (response) {
-    ResponseValidator.success(response);
-    ResponseValidator.jsonContentType(response);
-    ResponseValidator.notEmpty(response);
+      ResponseValidator.created(response);
+      ResponseValidator.jsonContentType(response);
   },
 );
 ```
 
-Available validators:
-- `ResponseValidator.success` - Status 200-299
-- `ResponseValidator.created` - Status 201
-- `ResponseValidator.successOrNoContent` - Status 200 or 204
-- `ResponseValidator.statusCode(response, code)` - Specific status code
-- `ResponseValidator.jsonContentType` - Content-Type is `application/json`
-- `ResponseValidator.notEmpty` - Body is not empty
+---
 
-### Interceptors
+## 🧩 Middleware Deep Dive
 
-Interceptors provide a lower-level hook for observing or modifying traffic without the full power of the middleware pipeline.
+### `RetryMiddleware`
+
+**Why?** Networks are flaky. Requests fail.  
+**When?** Always recommended for mobile/web apps.  
 
 ```dart
-final client = Client(
-  interceptors: [
-    FunctionalInterceptor(
-      onRequestCallback: (request) {
-        // Modify request
-        return request;
-      },
-    ),
-  ],
+const RetryMiddleware(
+  maxRetries: 3,
+  schedule: BackoffStrategy.exponential(),
+  
+  // Optional: Only retry specific errors (e.g., 5xx errors)
+  whenResponse: (response, attempt, duration) {
+    return response.statusCode >= 500;
+  },
+  
+  // Optional: Only retry specific exceptions (e.g., SocketException)
+  whenError: (error, attempt, nextDelay) {
+    return error is SocketException;
+  },
 );
 ```
 
-### Extensions
+### `LoggerMiddleware`
 
-Convenient extensions are available for `Response` and `Client`.
+**Why?** You need to see what's happening.  
+**When?** During development or for collecting production logs.
 
 ```dart
-// JSON parsing
-var map = response.jsonMap(); // Map<String, dynamic>
-var list = response.jsonList(); // List<dynamic>
-var listOfInt = response.jsonList<int>(); // typed List<int>
-
-// Status checks
-if (response.isSuccess) { ... } // 200-299
-if (response.isClientError) { ... } // 400-499
-if (response.isServerError) { ... } // 500-599
+LoggerMiddleware(
+  logHeaders: true,
+  logBody: true,
+  // Filter confidential headers
+  headerFilter: (k, v) => k == 'Authorization' ? '***' : v,
+  // Custom output (e.g., Crashlytics, File, Console)
+  logger: (String message) => print('HTTP: $message'),
+);
 ```
+
+### `BaseUrlMiddleware`
+
+**Why?** Don't repeat the domain name in every request.  
+**When?** When your app communicates with a specific API service.
+
+```dart
+const BaseUrlMiddleware('https://api.myservice.com/v1');
+
+// Now you can just use paths:
+client.get(Uri.parse('/users')); 
+```
+
+### `BearerAuthMiddleware`
+
+**Why?** Automatically inject `Authorization: Bearer ...` headers.  
+**When?** When accessing protected resources.
+
+```dart
+const BearerAuthMiddleware('my-access-token');
+```
+
+---
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are heavily encouraged! Discovered a bug? Have a feature request? Please feel free to submit a Pull Request or file an issue.
 
 ## License
 

@@ -5,11 +5,10 @@ import 'package:http_toolkit/http_toolkit.dart';
 void main() async {
   final client = Client(
     middlewares: [
-      const LoggerMiddleware(logBody: true),
+      LoggerMiddleware(),
       const HeadersMiddleware(headers: {'User-Agent': 'HttpToolkit/1.0'}),
       RetryMiddleware(
-        maxRetries: 2,
-        strategy: const LinearBackoffStrategy(Duration(seconds: 1)),
+        strategy: const .linear(Duration(seconds: 1)),
         whenError: (err, attempts, nextTry) {
           print(
             'Got Error in attempt $attempts, Retrying in ${nextTry.inMilliseconds}ms...',
@@ -32,7 +31,7 @@ void main() async {
     );
     print('Status: ${response.statusCode}');
   } on Exception catch (e) {
-    print('Error caught: $e');
+    print('Error caught:\n$e');
   } finally {
     client.close();
   }

@@ -1,8 +1,9 @@
 import 'dart:async';
-import 'dart:math';
-import 'package:http/http.dart';
-import '../middleware.dart';
-import '../utils/request_copier.dart';
+import 'dart:math' as math;
+
+import 'package:http/http.dart' as http;
+import 'package:http_toolkit/src/extension.dart';
+import 'package:http_toolkit/src/middleware.dart';
 
 /// A strategy for calculating delay durations between retry attempts.
 ///
@@ -32,6 +33,15 @@ import '../utils/request_copier.dart';
 /// ```
 abstract interface class BackoffStrategy {
   const BackoffStrategy();
+
+  const factory BackoffStrategy.fixed(Duration delay) = FixedDelayStrategy;
+
+  const factory BackoffStrategy.linear(Duration initialDelay) =
+      LinearBackoffStrategy;
+
+  const factory BackoffStrategy.exponential({
+    Duration initialDelay,
+  }) = ExponentialBackoffStrategy;
 
   /// Returns the delay duration before the next retry attempt.
   ///
@@ -164,7 +174,8 @@ class ExponentialBackoffStrategy implements BackoffStrategy {
   @override
   Duration getDelayDuration(int attempt) {
     return Duration(
-      milliseconds: initialDelay.inMilliseconds * pow(2, attempt - 1).toInt(),
+      milliseconds:
+          initialDelay.inMilliseconds * math.pow(2, attempt - 1).toInt(),
     );
   }
 }
@@ -248,7 +259,7 @@ class ExponentialBackoffStrategy implements BackoffStrategy {
 ///   ],
 /// );
 /// ```
-class RetryMiddleware implements Middleware {
+class RetryMiddleware implements AsyncMiddleware {
   /// Creates a retry middleware.
   ///
   /// [maxRetries] is the maximum number of retry attempts (default: 3).
@@ -292,14 +303,17 @@ class RetryMiddleware implements Middleware {
   ///
   /// If not provided, responses are never retried (only exceptions).
   final bool Function(
-    BaseResponse response,
+    http.BaseResponse response,
     int attempt,
     Duration totalDuration,
   )?
   whenResponse;
 
   @override
-  Future<StreamedResponse> handle(BaseRequest request, Handler next) async {
+  Future<http.StreamedResponse> handle(
+    http.BaseRequest request,
+    RequestHandler next,
+  ) async {
     var attempts = 0;
 
     while (true) {
@@ -307,7 +321,15 @@ class RetryMiddleware implements Middleware {
 
       final duration = strategy.getDelayDuration(attempts);
 
-      final currentRequest = (attempts == 1) ? request : copyRequest(request);
+      var currentRequest = request;
+
+      if (attempts == 1) {
+        currentRequest = request;
+      } else {
+        if (currentRequest is http.Request) {
+          currentRequest = currentRequest.clone();
+        }
+      }
 
       try {
         final response = await next(currentRequest);

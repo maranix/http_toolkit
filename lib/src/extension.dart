@@ -1,7 +1,8 @@
 import 'dart:convert';
+import 'dart:convert' as convert show Encoding;
 
 import 'package:http/http.dart' as http;
-import 'package:http_toolkit/src/types.dart';
+import 'package:http_toolkit/src/validator.dart';
 
 /// Extensions for parsing HTTP response bodies as JSON.
 ///
@@ -167,6 +168,12 @@ extension ResponseStatusExtension on http.Response {
 /// - Apply response validation before parsing
 /// - Get type-safe domain objects directly from API calls
 ///
+/// ## Response Validation
+///
+/// You can provide a [ResponseValidator] to check the response status or headers
+/// before attempting to parse the JSON. Use the static methods on [ResponseValidator]
+/// (e.g., [ResponseValidator.success], [ResponseValidator.created]).
+///
 /// ## Example
 ///
 /// ```dart
@@ -183,7 +190,7 @@ extension RequestExtension on http.Client {
   ///
   /// - [url]: The URL to request
   /// - [mapper]: Optional function to transform JSON type [T] into the result type [R]
-  /// - [responseValidator]: Optional validator to check response before parsing
+  /// - [responseValidator]: Optional [ResponseValidator] to check response before parsing
   /// - [headers]: Optional HTTP headers to include
   ///
   /// ## When to Use
@@ -211,7 +218,7 @@ extension RequestExtension on http.Client {
   Future<R> getDecoded<R extends dynamic, T extends Object>(
     Uri url, {
     ResponseBodyMapper<R, T>? mapper,
-    ResponseValidator? responseValidator,
+    ResponseValidatorCallback? responseValidator,
     Map<String, String>? headers,
   }) async {
     final response = await get(url, headers: headers);
@@ -227,7 +234,7 @@ extension RequestExtension on http.Client {
   ///
   /// - [url]: The URL to request
   /// - [mapper]: Optional function to transform JSON type [T] into the result type [R]
-  /// - [responseValidator]: Optional validator to check response before parsing
+  /// - [responseValidator]: Optional [ResponseValidator] to check response before parsing
   /// - [headers]: Optional HTTP headers to include
   /// - [body]: The request body (String, List&lt;int&gt;, or Map&lt;String, String&gt;)
   ///
@@ -258,7 +265,7 @@ extension RequestExtension on http.Client {
   Future<R> postDecoded<R extends dynamic, T extends Object>(
     Uri url, {
     ResponseBodyMapper<R, T>? mapper,
-    ResponseValidator? responseValidator,
+    ResponseValidatorCallback? responseValidator,
     Map<String, String>? headers,
     Object? body,
   }) async {
@@ -279,7 +286,7 @@ extension RequestExtension on http.Client {
   ///
   /// - [url]: The URL to request
   /// - [mapper]: Optional function to transform JSON type [T] into the result type [R]
-  /// - [responseValidator]: Optional validator to check response before parsing
+  /// - [responseValidator]: Optional [ResponseValidator] to check response before parsing
   /// - [headers]: Optional HTTP headers to include
   /// - [body]: The request body (String, List&lt;int&gt;, or Map&lt;String, String&gt;)
   ///
@@ -309,7 +316,7 @@ extension RequestExtension on http.Client {
   Future<R> putDecoded<R extends dynamic, T extends Object>(
     Uri url, {
     required ResponseBodyMapper<R, T> mapper,
-    ResponseValidator? responseValidator,
+    ResponseValidatorCallback? responseValidator,
     Map<String, String>? headers,
     Object? body,
   }) async {
@@ -330,7 +337,7 @@ extension RequestExtension on http.Client {
   ///
   /// - [url]: The URL to request
   /// - [mapper]: Optional function to transform JSON type [T] into the result type [R]
-  /// - [responseValidator]: Optional validator to check response before parsing
+  /// - [responseValidator]: Optional [ResponseValidator] to check response before parsing
   /// - [headers]: Optional HTTP headers to include
   /// - [body]: The request body (String, List&lt;int&gt;, or Map&lt;String, String&gt;)
   ///
@@ -360,7 +367,7 @@ extension RequestExtension on http.Client {
   Future<R> patchDecoded<R extends dynamic, T extends Object>(
     Uri url, {
     ResponseBodyMapper<R, T>? mapper,
-    ResponseValidator? responseValidator,
+    ResponseValidatorCallback? responseValidator,
     Map<String, String>? headers,
     Object? body,
   }) async {
@@ -381,7 +388,7 @@ extension RequestExtension on http.Client {
   ///
   /// - [url]: The URL to request
   /// - [mapper]: Optional function to transform JSON type [T] into the result type [R]
-  /// - [responseValidator]: Optional validator to check response before parsing
+  /// - [responseValidator]: Optional [ResponseValidator] to check response before parsing
   /// - [headers]: Optional HTTP headers to include
   /// - [body]: The request body (String, List&lt;int&gt;, or Map&lt;String, String&gt;)
   ///
@@ -418,12 +425,12 @@ extension RequestExtension on http.Client {
   /// ## Notes
   ///
   /// Many APIs return 204 No Content for successful deletes. In that case,
-  /// use `ResponseValidator.successOrNoContent` and handle the empty body
+  /// use [ResponseValidator.successOrNoContent] and handle the empty body
   /// appropriately in your mapper.
   Future<R> deleteDecoded<R extends dynamic, T extends Object>(
     Uri url, {
     ResponseBodyMapper<R, T>? mapper,
-    ResponseValidator? responseValidator,
+    ResponseValidatorCallback? responseValidator,
     Map<String, String>? headers,
     Object? body,
   }) async {
@@ -436,5 +443,61 @@ extension RequestExtension on http.Client {
     responseValidator?.call(response);
 
     return response.mapJson(mapper);
+  }
+}
+
+/// Extensions for safely cloning [http.Request] objects.
+extension CloneRequestX on http.Request {
+  /// Creates a deep copy of the request.
+  ///
+  /// This mirrors the request's method, url, headers, encoding, and body.
+  ///
+  /// ## Safe Cloning
+  ///
+  /// Standard `http` requests are mutable and can be consumed. This method ensures
+  /// that when we retry or transform requests, we are working with a fresh instance
+  /// that preserves the original intent.
+  http.Request clone() => cloneWith();
+
+  /// Creates a copy of the request with optional property overrides.
+  ///
+  /// Useful for middlewares that need to modify specific aspects of a request
+  /// (like the URL or headers) while keeping the rest identical.
+  ///
+  /// ## Parameters
+  ///
+  /// *   [uri]: New URI to use (e.g., for resolving base URLs).
+  /// *   [headers]: Additional headers to merge (does not replace existing headers, just adds/overwrites).
+  /// *   [encoding]: New encoding to use.
+  ///
+  /// ## Logic
+  ///
+  /// *   If [bodyBytes] is populated, it is copied directly.
+  /// *   Otherwise, [body] is copied.
+  /// *   Headers provided in [headers] are merged into the existing headers.
+  http.Request cloneWith({
+    Uri? uri,
+    Map<String, String>? headers,
+    convert.Encoding? encoding,
+  }) {
+    final copy =
+        http.Request(
+            method,
+            uri ?? url,
+          )
+          ..headers.addAll(this.headers)
+          ..encoding = encoding ?? this.encoding;
+
+    if (headers != null && headers.isNotEmpty) {
+      copy.headers.addAll(headers);
+    }
+
+    if (bodyBytes.isNotEmpty) {
+      copy.bodyBytes = bodyBytes;
+    } else {
+      copy.body = body;
+    }
+
+    return copy;
   }
 }

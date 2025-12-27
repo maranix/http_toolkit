@@ -44,9 +44,7 @@ class _Todo {
 void main() async {
   final client = Client(
     middlewares: [
-      BaseUrlMiddleware(
-        Uri.parse('https://jsonplaceholder.typicode.com'),
-      ),
+      const BaseUrlMiddleware('https://jsonplaceholder.typicode.com'),
     ],
   );
 

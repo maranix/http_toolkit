@@ -436,7 +436,7 @@ void main() {
       final client = Client(
         inner: mockInner,
         middlewares: [
-          BaseUrlMiddleware(Uri.parse('https://api.example.com/v1/')),
+          const BaseUrlMiddleware('https://api.example.com/v1/'),
         ],
       );
 
@@ -454,8 +454,8 @@ void main() {
 
       final client = Client(
         inner: mockInner,
-        middlewares: [
-          BaseUrlMiddleware(Uri.parse('https://api.example.com/v1/')),
+        middlewares: const [
+          BaseUrlMiddleware('https://api.example.com/v1/'),
         ],
       );
 
@@ -474,7 +474,7 @@ void main() {
       final client = Client(
         inner: mockInner,
         middlewares: [
-          BaseUrlMiddleware(Uri.parse('https://api.example.com/v1/')),
+          const BaseUrlMiddleware('https://api.example.com/v1/'),
         ],
       );
 
@@ -523,8 +523,9 @@ void main() {
     test('logs request and response', () async {
       final logOutput = <String>[];
       final logger = FunctionalLogger(
-        logCallback: logOutput.add,
-        logHeaders: true,
+        logCallback: (log) {
+          logOutput.addAll(log.split('\n').where((line) => line.isNotEmpty));
+        },
       );
 
       final mockInner = MockClient((request) async {
@@ -533,7 +534,9 @@ void main() {
 
       final client = Client(
         inner: mockInner,
-        middlewares: [LoggerMiddleware(logger: logger)],
+        middlewares: [
+          LoggerMiddleware(logger: logger),
+        ],
       );
 
       await client.get(Uri.parse('https://example.com'));
@@ -547,15 +550,18 @@ void main() {
       expect(
         logOutput,
         contains(
-          'Response <-- 200 https://example.com',
+          'Response <-- 200 https://example.com (0ms)',
         ),
       );
     });
 
     test('logs body when enabled', () async {
       final logOutput = <String>[];
+
       final logger = FunctionalLogger(
-        logCallback: logOutput.add,
+        logCallback: (log) {
+          logOutput.addAll(log.split('\n').where((line) => line.isNotEmpty));
+        },
         logBody: true,
       );
 
@@ -565,7 +571,12 @@ void main() {
 
       final client = Client(
         inner: mockInner,
-        middlewares: [LoggerMiddleware(logger: logger, logBody: true)],
+        middlewares: [
+          LoggerMiddleware(
+            logger: logger,
+            logStreamedResponseBody: true,
+          ),
+        ],
       );
 
       final response = await client.post(
@@ -584,7 +595,9 @@ void main() {
     test('logs error on exception', () async {
       final logOutput = <String>[];
       final logger = FunctionalLogger(
-        logCallback: logOutput.add,
+        logCallback: (log) {
+          logOutput.addAll(log.split('\n').where((line) => line.isNotEmpty));
+        },
       );
 
       final mockInner = MockClient((request) {

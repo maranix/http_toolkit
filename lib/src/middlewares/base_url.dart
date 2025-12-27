@@ -1,28 +1,49 @@
-import 'package:http/http.dart';
-import 'package:http_toolkit/src/utils/request_copier.dart';
-import '../middleware.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_toolkit/src/extension.dart';
+import 'package:http_toolkit/src/middleware.dart';
 
-/// A middleware that enforces a base URL for requests.
+/// A request transformer that injects a base URL into requests.
 ///
-/// If the request URL scheme represents a relative path (or needs retargeting),
-/// this middleware creates a new request pointing to the [baseUrl].
-class BaseUrlMiddleware implements Middleware {
+/// This middleware checks if the request URL matches the base URL's scheme and host.
+/// If the request URL is relative (or just a path), it resolves it against the [baseUrl].
+///
+/// ## Resolution Logic
+///
+/// It uses [Uri.resolveUri] to combine the [baseUrl] with the incoming request's URL.
+///
+/// ## Example
+///
+/// ```dart
+/// // Setup
+/// final client = Client(
+///   middlewares: [
+///     const BaseUrlMiddleware('https://api.example.com/v1/'),
+///   ],
+/// );
+///
+/// // Usage
+/// // Request becomes: https://api.example.com/v1/users?id=123
+/// client.get(Uri.parse('users?id=123'));
+/// ```
+final class BaseUrlMiddleware implements RequestTransformerMiddleware {
+  /// Creates a middleware to resolve requests against [baseUrl].
   const BaseUrlMiddleware(this.baseUrl);
-  final Uri baseUrl;
+
+  /// The base URL to inject. Should usually end with a slash `/` if it includes a path.
+  final String baseUrl;
 
   @override
-  Future<StreamedResponse> handle(BaseRequest request, Handler next) {
-    var newUrl = baseUrl.resolve(request.url.path);
-    if (request.url.hasQuery) {
-      newUrl = newUrl.replace(queryParameters: request.url.queryParameters);
-    }
-    if (request.url.hasFragment) {
-      newUrl = newUrl.replace(fragment: request.url.fragment);
+  http.BaseRequest onRequest(http.BaseRequest request) {
+    if (request is! http.Request) {
+      return request;
     }
 
-    // We must copy the request to change the URL as BaseRequest.url is final.
-    // copyRequest creates a copy with the SAME url, but we need to create a new instance manually.
-    final retargetedRequest = copyRequest(request, url: newUrl);
-    return next(retargetedRequest);
+    final baseUri = Uri.tryParse(baseUrl);
+    if (baseUri == null) {
+      throw ArgumentError('Invalid base URL: $baseUrl');
+    }
+
+    final newUri = baseUri.resolveUri(request.url);
+    return request.cloneWith(uri: newUri);
   }
 }
