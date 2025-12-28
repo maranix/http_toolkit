@@ -16,7 +16,7 @@ import 'middleware.dart';
 ///     perform pre-request work, post-response work, error handling, and retries.
 ///     *   Executed in **LIFO (Last-In-First-Out)** order (like onion layers).
 ///     *   Example: `RetryMiddleware`, `LoggerMiddleware` (Request duration).
-///
+//
 /// 2.  **Request Middlewares**: Synchronous side-effects before the request is sent.
 ///     *   Executed in **FIFO (First-In-First-Out)** order.
 ///     *   Useful for logging request details or updating external state.
@@ -62,7 +62,7 @@ class Client extends http.BaseClient {
 
   static RequestHandler _composeHandler(
     RequestHandler innerHandler,
-    Iterable<Middleware> middlewares,
+    List<Middleware> middlewares,
   ) {
     if (middlewares.isEmpty) {
       return innerHandler;
@@ -71,59 +71,76 @@ class Client extends http.BaseClient {
     var handler = innerHandler;
 
     // Filter Async, Request and Response middlewares ahead of handler composition
-    final asyncMiddlewares = List<AsyncMiddleware>.unmodifiable(
-      middlewares.whereType<AsyncMiddleware>(),
-    );
+    final asyncMiddlewares = <AsyncMiddleware>[];
+    final requestMiddlewares = <RequestMiddleware>[];
+    final requestTransformers = <RequestTransformerMiddleware>[];
+    final responseMiddlewares = <ResponseMiddleware>[];
 
-    final requestMiddlewares = List<RequestMiddleware>.unmodifiable(
-      middlewares.whereType<RequestMiddleware>(),
-    );
+    for (var i = 0; i < middlewares.length; i++) {
+      final middleware = middlewares[i];
 
-    final requestTransformers = List<RequestTransformerMiddleware>.unmodifiable(
-      middlewares.whereType<RequestTransformerMiddleware>(),
-    );
-
-    final responseMiddlewares = List<ResponseMiddleware>.unmodifiable(
-      middlewares.whereType<ResponseMiddleware>(),
-    );
-
-    final hasAsync = asyncMiddlewares.isNotEmpty;
-    final hasRequest = requestMiddlewares.isNotEmpty;
-    final hasRequestTransformers = requestTransformers.isNotEmpty;
-    final hasResponse = responseMiddlewares.isNotEmpty;
-
-    if (hasAsync) {
-      for (var i = asyncMiddlewares.length - 1; i >= 0; i--) {
-        final middleware = asyncMiddlewares[i];
-        final next = handler;
-
-        handler = (request) => middleware.handle(request, next);
+      switch (middleware) {
+        case AsyncMiddleware _:
+          asyncMiddlewares.add(middleware);
+        case RequestMiddleware _:
+          requestMiddlewares.add(middleware);
+        case RequestTransformerMiddleware _:
+          requestTransformers.add(middleware);
+        case ResponseMiddleware _:
+          responseMiddlewares.add(middleware);
+        default:
+          throw UnsupportedError(
+            'The middleware of type `${middleware.runtimeType}` is not supported.\n\n'
+            'This framework only accepts middleware that implement one of the following interfaces:\n'
+            '• AsyncMiddleware\n'
+            '• RequestMiddleware\n'
+            '• RequestTransformerMiddleware\n'
+            '• ResponseMiddleware\n\n'
+            'Please update your middleware to implement one of these interfaces '
+            'or remove it from the middleware list.',
+          );
       }
     }
 
+    handler = _wrapAsyncMiddlewares(handler, asyncMiddlewares);
+
     return (http.BaseRequest request) async {
-      if (hasRequest) {
-        for (var i = 0; i < requestMiddlewares.length; i++) {
-          requestMiddlewares[i].onRequest(request);
-        }
+      for (var i = 0; i < requestMiddlewares.length; i++) {
+        requestMiddlewares[i].onRequest(request);
       }
 
-      if (hasRequestTransformers) {
-        for (var i = requestTransformers.length - 1; i >= 0; i--) {
-          request = requestTransformers[i].onRequest(request);
-        }
+      for (var i = requestTransformers.length - 1; i >= 0; i--) {
+        request = requestTransformers[i].onRequest(request);
       }
 
       var response = await handler(request);
 
-      if (hasResponse) {
-        for (var i = responseMiddlewares.length - 1; i >= 0; i--) {
-          response = responseMiddlewares[i].onResponse(response);
-        }
+      for (var i = responseMiddlewares.length - 1; i >= 0; i--) {
+        response = responseMiddlewares[i].onResponse(response);
       }
 
       return response;
     };
+  }
+
+  static RequestHandler _wrapAsyncMiddlewares(
+    RequestHandler handler,
+    List<AsyncMiddleware> middlewares,
+  ) {
+    if (middlewares.isEmpty) {
+      return handler;
+    }
+
+    var h = handler;
+
+    for (var i = middlewares.length - 1; i >= 0; i--) {
+      final middleware = middlewares[i];
+      final next = h;
+
+      h = (request) => middleware.handle(request, next);
+    }
+
+    return h;
   }
 
   @override
