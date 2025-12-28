@@ -88,17 +88,6 @@ class Client extends http.BaseClient {
           requestTransformers.add(middleware);
         case ResponseMiddleware _:
           responseMiddlewares.add(middleware);
-        default:
-          throw UnsupportedError(
-            'The middleware of type `${middleware.runtimeType}` is not supported.\n\n'
-            'This framework only accepts middleware that implement one of the following interfaces:\n'
-            '• AsyncMiddleware\n'
-            '• RequestMiddleware\n'
-            '• RequestTransformerMiddleware\n'
-            '• ResponseMiddleware\n\n'
-            'Please update your middleware to implement one of these interfaces '
-            'or remove it from the middleware list.',
-          );
       }
     }
 
