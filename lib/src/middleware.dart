@@ -11,14 +11,14 @@ import 'package:http/http.dart' as http;
 typedef RequestHandler =
     Future<http.StreamedResponse> Function(http.BaseRequest request);
 
-/// The base marker interface for all middleware types.
+/// The base marker class for all middleware types.
 ///
 /// Do not implement this directly. Implement one of the specific sub-interfaces:
 /// *   [RequestMiddleware]
 /// *   [RequestTransformerMiddleware]
 /// *   [ResponseMiddleware]
 /// *   [AsyncMiddleware]
-abstract interface class Middleware {}
+sealed class Middleware {}
 
 /// A middleware that runs purely for side-effects before a request is sent.
 ///
@@ -35,7 +35,7 @@ abstract interface class Middleware {}
 /// ## Use Cases
 /// *   Logging "Request Started" events.
 /// *   Updating internal metrics or counters.
-abstract interface class RequestMiddleware implements Middleware {
+abstract interface class RequestMiddleware extends Middleware {
   /// Called before the request is sent.
   void onRequest(http.BaseRequest request);
 }
@@ -55,7 +55,7 @@ abstract interface class RequestMiddleware implements Middleware {
 /// *   Resolving relative URLs [BaseUrlMiddleware].
 /// *   Injecting Authentication headers [BearerAuthMiddleware].
 /// *   Compressing request bodies.
-abstract interface class RequestTransformerMiddleware implements Middleware {
+abstract interface class RequestTransformerMiddleware extends Middleware {
   /// Transforms the request and returns the version to be sent.
   http.BaseRequest onRequest(http.BaseRequest request);
 }
@@ -74,7 +74,7 @@ abstract interface class RequestTransformerMiddleware implements Middleware {
 /// ## Use Cases
 /// *   Global error handling (validating status codes).
 /// *   Logging response metadata.
-abstract interface class ResponseMiddleware implements Middleware {
+abstract interface class ResponseMiddleware extends Middleware {
   /// processes the response.
   http.StreamedResponse onResponse(
     http.StreamedResponse response,
@@ -97,7 +97,7 @@ abstract interface class ResponseMiddleware implements Middleware {
 /// *   [RetryMiddleware]: Catch errors and retry.
 /// *   [LoggerMiddleware]: Measure total duration of the request.
 /// *   Caching layers.
-abstract interface class AsyncMiddleware implements Middleware {
+abstract interface class AsyncMiddleware extends Middleware {
   /// Handles the request execution.
   ///
   /// Call [next(request)] to proceed to the next middleware in the chain.
