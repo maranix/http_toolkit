@@ -1,3 +1,6 @@
+/// @docImport 'package:http_toolkit/http_toolkit.dart';
+library;
+
 import 'dart:async';
 
 import 'package:http/http.dart' as http;
@@ -49,8 +52,8 @@ abstract interface class RequestMiddleware implements Middleware {
 /// *   Can safely clone requests.
 ///
 /// ## Use Cases
-/// *   Resolving relative URLs ([BaseUrlMiddleware]).
-/// *   Injecting Authentication headers ([BearerAuthMiddleware]).
+/// *   Resolving relative URLs [BaseUrlMiddleware].
+/// *   Injecting Authentication headers [BearerAuthMiddleware].
 /// *   Compressing request bodies.
 abstract interface class RequestTransformerMiddleware implements Middleware {
   /// Transforms the request and returns the version to be sent.
