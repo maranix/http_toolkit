@@ -32,9 +32,12 @@ class FunctionalLogger implements LoggerInterface {
     this.logCallback,
     this.logHeaders = false,
     this.logBody = false,
+    this.headerFilter,
   });
 
   final void Function(String)? logCallback;
+  final MapEntry<String, String> Function(MapEntry<String, String> entry)?
+  headerFilter;
   final bool logHeaders;
   final bool logBody;
 
@@ -58,7 +61,15 @@ class FunctionalLogger implements LoggerInterface {
         ..writeln()
         ..writeln('Headers:');
 
-      for (final entry in request.headers.entries) {
+      // Make a copy so that we don't mutate the header in the request
+      Iterable<MapEntry<String, String>> entries = List.from(
+        request.headers.entries,
+      );
+      if (headerFilter != null) {
+        entries = entries.map(headerFilter!);
+      }
+
+      for (final entry in entries) {
         _buf.writeln('\t${entry.key}: ${entry.value}');
       }
     }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:http_toolkit/http_toolkit.dart';
@@ -524,7 +526,12 @@ void main() {
       final logOutput = <String>[];
       final logger = FunctionalLogger(
         logCallback: (log) {
-          logOutput.addAll(log.split('\n').where((line) => line.isNotEmpty));
+          logOutput.addAll(
+            log
+                .split('\n')
+                .map((line) => line.trim())
+                .where((line) => line.isNotEmpty),
+          );
         },
       );
 
@@ -542,16 +549,20 @@ void main() {
       await client.get(Uri.parse('https://example.com'));
 
       expect(
-        logOutput,
-        contains(
-          'Request --> GET https://example.com',
+        logOutput.any(
+          (line) => line.startsWith(
+            'Request --> GET https://example.com',
+          ),
         ),
+        isTrue,
       );
       expect(
-        logOutput,
-        contains(
-          'Response <-- 200 https://example.com (0ms)',
+        logOutput.any(
+          (line) => line.startsWith(
+            'Response <-- 200 https://example.com',
+          ),
         ),
+        isTrue,
       );
     });
 
@@ -560,7 +571,12 @@ void main() {
 
       final logger = FunctionalLogger(
         logCallback: (log) {
-          logOutput.addAll(log.split('\n').where((line) => line.isNotEmpty));
+          logOutput.addAll(
+            log
+                .split('\n')
+                .map((line) => line.trim())
+                .where((line) => line.isNotEmpty),
+          );
         },
         logBody: true,
       );
@@ -618,5 +634,56 @@ void main() {
         isTrue,
       );
     });
+
+    test(
+      'headFilter masks Authorization header instead of replacing it in the request',
+      () async {
+        final logOutput = <String>[];
+        final logger = FunctionalLogger(
+          logHeaders: true,
+          logCallback: (log) {
+            logOutput.addAll(
+              log
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .where((line) => line.isNotEmpty),
+            );
+          },
+          headerFilter: (entry) => entry.key == HttpHeaders.authorizationHeader
+              ? const MapEntry(HttpHeaders.authorizationHeader, '***')
+              : entry,
+        );
+
+        final mockInner = MockClient((request) async {
+          return http.Response('{"key": "value"}', 200, request: request);
+        });
+
+        final client = Client(
+          inner: mockInner,
+          middlewares: [
+            LoggerMiddleware(logger: logger),
+            const BearerAuthMiddleware('super-secret-token'),
+          ],
+        );
+
+        final response = await client.get(Uri.parse('https://example.com'));
+
+        expect(
+          logOutput.any(
+            (line) =>
+                line.startsWith('${HttpHeaders.authorizationHeader}: ***'),
+          ),
+          isTrue,
+        );
+
+        expect(
+          response.request!.headers,
+          containsPair(
+            HttpHeaders.authorizationHeader,
+            'Bearer super-secret-token',
+          ),
+        );
+      },
+    );
   });
 }

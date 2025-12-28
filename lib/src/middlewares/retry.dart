@@ -268,7 +268,7 @@ class RetryMiddleware implements AsyncMiddleware {
   /// [whenResponse] is called on responses to decide if retry should occur.
   const RetryMiddleware({
     this.maxRetries = 3,
-    this.strategy = const ExponentialBackoffStrategy(),
+    this.strategy = const .exponential(),
     this.whenError,
     this.whenResponse,
   });
