@@ -71,7 +71,6 @@ class Client extends http.BaseClient {
     var handler = innerHandler;
 
     // Filter Async, Request and Response middlewares ahead of handler composition
-    final asyncMiddlewares = <AsyncMiddleware>[];
     final requestMiddlewares = <RequestMiddleware>[];
     final requestTransformers = <RequestTransformerMiddleware>[];
     final responseMiddlewares = <ResponseMiddleware>[];
@@ -81,7 +80,8 @@ class Client extends http.BaseClient {
 
       switch (middleware) {
         case AsyncMiddleware _:
-          asyncMiddlewares.add(middleware);
+          final next = handler;
+          handler = (request) => middleware.handle(request, next);
         case RequestMiddleware _:
           requestMiddlewares.add(middleware);
         case RequestTransformerMiddleware _:
@@ -90,8 +90,6 @@ class Client extends http.BaseClient {
           responseMiddlewares.add(middleware);
       }
     }
-
-    handler = _wrapAsyncMiddlewares(handler, asyncMiddlewares);
 
     return (http.BaseRequest request) async {
       for (var i = 0; i < requestMiddlewares.length; i++) {
@@ -110,26 +108,6 @@ class Client extends http.BaseClient {
 
       return response;
     };
-  }
-
-  static RequestHandler _wrapAsyncMiddlewares(
-    RequestHandler handler,
-    List<AsyncMiddleware> middlewares,
-  ) {
-    if (middlewares.isEmpty) {
-      return handler;
-    }
-
-    var h = handler;
-
-    for (var i = middlewares.length - 1; i >= 0; i--) {
-      final middleware = middlewares[i];
-      final next = h;
-
-      h = (request) => middleware.handle(request, next);
-    }
-
-    return h;
   }
 
   @override
