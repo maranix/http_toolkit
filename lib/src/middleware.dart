@@ -35,7 +35,7 @@ sealed class Middleware {}
 /// ## Use Cases
 /// *   Logging "Request Started" events.
 /// *   Updating internal metrics or counters.
-abstract interface class RequestMiddleware extends Middleware {
+abstract class RequestMiddleware extends Middleware {
   /// Called before the request is sent.
   void onRequest(http.BaseRequest request);
 }
@@ -55,7 +55,7 @@ abstract interface class RequestMiddleware extends Middleware {
 /// *   Resolving relative URLs [BaseUrlMiddleware].
 /// *   Injecting Authentication headers [BearerAuthMiddleware].
 /// *   Compressing request bodies.
-abstract interface class RequestTransformerMiddleware extends Middleware {
+abstract class RequestTransformerMiddleware extends Middleware {
   /// Transforms the request and returns the version to be sent.
   http.BaseRequest onRequest(http.BaseRequest request);
 }
@@ -74,7 +74,7 @@ abstract interface class RequestTransformerMiddleware extends Middleware {
 /// ## Use Cases
 /// *   Global error handling (validating status codes).
 /// *   Logging response metadata.
-abstract interface class ResponseMiddleware extends Middleware {
+abstract class ResponseMiddleware extends Middleware {
   /// processes the response.
   http.StreamedResponse onResponse(
     http.StreamedResponse response,
@@ -97,7 +97,7 @@ abstract interface class ResponseMiddleware extends Middleware {
 /// *   [RetryMiddleware]: Catch errors and retry.
 /// *   [LoggerMiddleware]: Measure total duration of the request.
 /// *   Caching layers.
-abstract interface class AsyncMiddleware extends Middleware {
+abstract class AsyncMiddleware extends Middleware {
   /// Handles the request execution.
   ///
   /// Call [next(request)] to proceed to the next middleware in the chain.
