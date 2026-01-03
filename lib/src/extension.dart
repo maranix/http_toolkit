@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:convert' as convert show Encoding;
-import 'dart:isolate';
 
 import 'package:http/http.dart' as http;
 import 'package:http_toolkit/src/validator.dart';
@@ -43,11 +42,8 @@ extension ResponseBodyExtension on http.Response {
   /// ## Better Alternative
   ///
   /// For type-safe parsing, use [mapJson] with a typed mapper function.
-  Map<String, dynamic> jsonMap({bool isolate = false}) =>
-      mapJson<Map<String, dynamic>, Map<String, dynamic>>(
-        isolate: isolate,
-        mapper: (json) => json,
-      );
+  Map<String, dynamic> jsonMap() =>
+      mapJson<Map<String, dynamic>, Map<String, dynamic>>((json) => json);
 
   /// Parses the response body as a JSON array.
   ///
@@ -70,11 +66,8 @@ extension ResponseBodyExtension on http.Response {
   /// ## Better Alternative
   ///
   /// For type-safe parsing, use [mapJson] with a typed mapper function.
-  List<T> jsonList<T extends dynamic>({bool isolate = false}) =>
-      mapJson<List<T>, List<dynamic>>(
-        isolate: isolate,
-        mapper: (json) => json.cast<T>(),
-      );
+  List<T> jsonList<T extends dynamic>() =>
+      mapJson<List<T>, List<dynamic>>((json) => json.cast<T>());
 
   /// Parses the response body as JSON and applies a mapper function.
   ///
@@ -108,18 +101,8 @@ extension ResponseBodyExtension on http.Response {
   ///   (json) => json['data'] as List<dynamic>,
   /// );
   /// ```
-  R mapJson<R, T extends Object>({
-    bool isolate = false,
-    ResponseBodyMapper<R, T>? mapper,
-  }) {
-    final decoded = switch (isolate) {
-      false => jsonDecode(body),
-      true => Isolate.run<dynamic>(
-        () => jsonDecode(body),
-        debugName: 'Isolate Mapper($R)',
-      ),
-    };
-
+  R mapJson<R, T extends Object>([ResponseBodyMapper<R, T>? mapper]) {
+    final decoded = jsonDecode(body);
     if (decoded is! T) {
       throw FormatException(
         'Expected JSON of type $T, '
@@ -234,7 +217,6 @@ extension RequestExtension on http.Client {
   /// ```
   Future<R> getDecoded<R extends dynamic, T extends Object>(
     Uri url, {
-    bool isolateMapper = false,
     ResponseBodyMapper<R, T>? mapper,
     ResponseValidatorCallback? responseValidator,
     Map<String, String>? headers,
@@ -243,7 +225,7 @@ extension RequestExtension on http.Client {
 
     responseValidator?.call(response);
 
-    return response.mapJson(isolate: isolateMapper, mapper: mapper);
+    return response.mapJson(mapper);
   }
 
   /// Performs a POST request and decodes the JSON response.
@@ -282,7 +264,6 @@ extension RequestExtension on http.Client {
   /// ```
   Future<R> postDecoded<R extends dynamic, T extends Object>(
     Uri url, {
-    bool isolateMapper = false,
     ResponseBodyMapper<R, T>? mapper,
     ResponseValidatorCallback? responseValidator,
     Map<String, String>? headers,
@@ -296,7 +277,7 @@ extension RequestExtension on http.Client {
 
     responseValidator?.call(response);
 
-    return response.mapJson(isolate: isolateMapper, mapper: mapper);
+    return response.mapJson(mapper);
   }
 
   /// Performs a PUT request and decodes the JSON response.
@@ -334,8 +315,7 @@ extension RequestExtension on http.Client {
   /// ```
   Future<R> putDecoded<R extends dynamic, T extends Object>(
     Uri url, {
-    bool isolateMapper = false,
-    ResponseBodyMapper<R, T>? mapper,
+    required ResponseBodyMapper<R, T> mapper,
     ResponseValidatorCallback? responseValidator,
     Map<String, String>? headers,
     Object? body,
@@ -348,7 +328,7 @@ extension RequestExtension on http.Client {
 
     responseValidator?.call(response);
 
-    return response.mapJson(isolate: isolateMapper, mapper: mapper);
+    return response.mapJson(mapper);
   }
 
   /// Performs a PATCH request and decodes the JSON response.
@@ -386,7 +366,6 @@ extension RequestExtension on http.Client {
   /// ```
   Future<R> patchDecoded<R extends dynamic, T extends Object>(
     Uri url, {
-    bool isolateMapper = false,
     ResponseBodyMapper<R, T>? mapper,
     ResponseValidatorCallback? responseValidator,
     Map<String, String>? headers,
@@ -400,7 +379,7 @@ extension RequestExtension on http.Client {
 
     responseValidator?.call(response);
 
-    return response.mapJson(isolate: isolateMapper, mapper: mapper);
+    return response.mapJson(mapper);
   }
 
   /// Performs a DELETE request and decodes the JSON response.
@@ -450,7 +429,6 @@ extension RequestExtension on http.Client {
   /// appropriately in your mapper.
   Future<R> deleteDecoded<R extends dynamic, T extends Object>(
     Uri url, {
-    bool isolateMapper = false,
     ResponseBodyMapper<R, T>? mapper,
     ResponseValidatorCallback? responseValidator,
     Map<String, String>? headers,
@@ -464,7 +442,7 @@ extension RequestExtension on http.Client {
 
     responseValidator?.call(response);
 
-    return response.mapJson(isolate: isolateMapper, mapper: mapper);
+    return response.mapJson(mapper);
   }
 }
 
