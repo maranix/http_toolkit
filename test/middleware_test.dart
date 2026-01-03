@@ -649,7 +649,8 @@ void main() {
                   .where((line) => line.isNotEmpty),
             );
           },
-          headerFilter: (entry) => entry.key == HttpHeaders.authorizationHeader
+          requestHeaderFilter: (entry) =>
+              entry.key == HttpHeaders.authorizationHeader
               ? const MapEntry(HttpHeaders.authorizationHeader, '***')
               : entry,
         );
@@ -672,6 +673,81 @@ void main() {
           logOutput.any(
             (line) =>
                 line.startsWith('${HttpHeaders.authorizationHeader}: ***'),
+          ),
+          isTrue,
+        );
+
+        expect(
+          response.request!.headers,
+          containsPair(
+            HttpHeaders.authorizationHeader,
+            'Bearer super-secret-token',
+          ),
+        );
+      },
+    );
+
+    test(
+      'headFilter masks Authorization header instead of replacing it in the response',
+      () async {
+        final logOutput = <String>[];
+        final logger = FunctionalLogger(
+          logHeaders: true,
+          logCallback: (log) {
+            logOutput.addAll(
+              log
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .where((line) => line.isNotEmpty),
+            );
+          },
+          // Maybe we should have two of these (response & request)
+          requestHeaderFilter: (entry) => switch (entry.key) {
+            HttpHeaders.authorizationHeader => const MapEntry(
+              HttpHeaders.authorizationHeader,
+              '***',
+            ),
+            _ => entry,
+          },
+          responseHeaderFilter: (entry) => switch (entry.key) {
+            HttpHeaders.etagHeader => const MapEntry(
+              HttpHeaders.etagHeader,
+              '***',
+            ),
+            _ => entry,
+          },
+        );
+
+        final mockInner = MockClient((request) async {
+          return http.Response(
+            '{"key": "value"}',
+            200,
+            request: request,
+            headers: {HttpHeaders.etagHeader: '123456'},
+          );
+        });
+
+        final client = Client(
+          inner: mockInner,
+          middlewares: [
+            LoggerMiddleware(logger: logger),
+            const BearerAuthMiddleware('super-secret-token'),
+          ],
+        );
+
+        final response = await client.get(Uri.parse('https://example.com'));
+
+        expect(
+          logOutput.any(
+            (line) =>
+                line.startsWith('${HttpHeaders.authorizationHeader}: ***'),
+          ),
+          isTrue,
+        );
+
+        expect(
+          logOutput.any(
+            (line) => line.startsWith('${HttpHeaders.etagHeader}: ***'),
           ),
           isTrue,
         );

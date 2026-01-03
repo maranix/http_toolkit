@@ -32,12 +32,15 @@ class FunctionalLogger implements LoggerInterface {
     this.logCallback,
     this.logHeaders = false,
     this.logBody = false,
-    this.headerFilter,
+    this.requestHeaderFilter,
+    this.responseHeaderFilter,
   });
 
   final void Function(String)? logCallback;
   final MapEntry<String, String> Function(MapEntry<String, String> entry)?
-  headerFilter;
+  requestHeaderFilter;
+  final MapEntry<String, String> Function(MapEntry<String, String> entry)?
+  responseHeaderFilter;
   final bool logHeaders;
   final bool logBody;
 
@@ -53,6 +56,23 @@ class FunctionalLogger implements LoggerInterface {
     _buf.clear();
   }
 
+  Iterable<MapEntry<String, String>> _applyHeaderFilter(
+    Map<String, String> headers, [
+    MapEntry<String, String> Function(MapEntry<String, String> entry)? filter,
+  ]) {
+    if (filter == null) {
+      return headers.entries;
+    }
+
+    /// Avoid replacing or modifying the original [headers] since mutating
+    /// them could result in failed requests.
+    final entries = List<MapEntry<String, String>>.from(
+      headers.entries,
+    );
+
+    return entries.map(filter);
+  }
+
   @override
   void logRequest(http.BaseRequest request) {
     _buf.writeln('Request --> ${request.method} ${request.url}');
@@ -61,16 +81,9 @@ class FunctionalLogger implements LoggerInterface {
         ..writeln()
         ..writeln('Headers:');
 
-      // Make a copy so that we don't mutate the header in the request
-      Iterable<MapEntry<String, String>> entries = List.from(
-        request.headers.entries,
-      );
-      if (headerFilter != null) {
-        entries = entries.map(headerFilter!);
-      }
-
-      for (final entry in entries) {
-        _buf.writeln('\t${entry.key}: ${entry.value}');
+      final headers = _applyHeaderFilter(request.headers, requestHeaderFilter);
+      for (final header in headers) {
+        _buf.writeln('\t${header.key}: ${header.value}');
       }
     }
 
@@ -123,7 +136,11 @@ class FunctionalLogger implements LoggerInterface {
         ..writeln()
         ..writeln('Headers:');
 
-      for (final entry in response.headers.entries) {
+      final headers = _applyHeaderFilter(
+        response.headers,
+        responseHeaderFilter,
+      );
+      for (final entry in headers) {
         _buf.writeln('\t${entry.key}: ${entry.value}');
       }
     }
